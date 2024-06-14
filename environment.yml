@@ -1,0 +1,11 @@
+name: tempregpy
+channels:
+  - defaults
+dependencies:
+  - numpy
+  - pandas
+  - matplotlib
+  - openpyxl
+  - scipy
+  - pip:
+    - ortools
