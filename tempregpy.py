@@ -5,6 +5,8 @@ https://en.wikipedia.org/wiki/Stigler_diet.
 """
 from ortools.linear_solver import pywraplp
 import pandas as pd
+from tempregpy import *
+import random
 
 # Sets
 time = ["t{:02}".format(i) for i in range(1, 25)]
@@ -15,25 +17,55 @@ power_plant = ["PlantA"]
 LMP_values = [46.85, 45.06, 43.83, 42.55, 42.62, 46.61, 76.48, 77.49, 73.64, 68.51, 67.62, 69.34, 69.23, 74.68, 86.84, 97.79, 91.29, 99.07, 103.56, 108.67, 98.73, 91.91, 53.34, 48.72]
 T_RM61_hourly_values = [15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 18, 18, 18, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5]
 dT_hourly_values = [1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5]
-T_RM61_daily = 15.5
-dT_daily = 1.5
-T_bp_values = [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5]
-T_tur_values = [15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5]
-Demand_values = [1000 for i in range (1, 25)]
-Q_tot_daily = 235003
-WaterToPowerConversion = 0.0354538
-RampUp = 4000
-RampDown = 2500
-Q_bp_min_values = 0
-Q_bp_max_values = 15000
-Q_tur_min_values = 2400
-Q_tur_max_values = 25000
-Q_tot_min_values = 7000
-Q_tot_max_values = 12100
-T_ramp_up_delta = 1
-T_ramp_down_delta = 1
-T_RM61_min = 1
+# # # Define the possible values and their weights (for clustering)
+# possible_values = [1.5, 2.5, 3.5, 5.0]
+# weights = [5, 2, 1, 1]  # Adjust weights based on how frequently you want each value
+# dT_hourly_values = [random.choices(possible_values, weights=weights)[0] for _ in range(24)]
 
+T_RM61_daily = 15.5 # °C
+dT_daily = 1.5 # °C
+T_bp_values = [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5] # °C
+T_tur_values = [15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5] # °C
+Demand_values = [1000 for i in range (1, 25)] # MW
+Q_tot_daily = 235003 # CFS
+# Q_tot_daily = 180003 # CFS
+Q_max_daily_change = 8000 # CFS
+WaterToPowerConversion = 0.0354538 # MW/CFS
+Q_tot_ramp_up = 4000 # CFS/h
+Q_tot_ramp_down = 2500 # CFS/h
+Q_bp_min_values = 0 # CFS
+Q_bp_max_values = 15000 # CFS
+Q_tur_min_values = 2400 # CFS
+Q_tur_max_values = 25000 # CFS
+Q_tot_min_values = 7000 # CFS
+Q_tot_max_values = 12100 # CFS
+T_ramp_up_delta = 2 # °C
+T_ramp_down_delta = 2 # °C
+T_RM61_min = 10 # °C
+Q_bp_ramp_down_max = 15000
+Q_bp_ramp_up_max = 15000
+Q_tur_ramp_down_max = 4000
+Q_tur_ramp_up_max = 25000
+C_bp_ramp_up = 1
+C_bp_ramp_down = 1
+
+# maximum release within 24h cant be more than X
+# daily total change 8000 CFS 8000 <= qtot_t - qtot_t+dt <=8000 (for all hours)
+# q_tot_t > qmin q_tot_t <= 8000
+
+### Compute hull coefficients
+data_gen = DataGenerator(Q_tur_min_values, Q_tur_max_values, Q_bp_min_values, Q_bp_max_values, Q_tot_min_values, Q_tot_max_values)
+hull_X = HullComputation(data_gen.points_X, "X = Q_bp * Q_tur1")
+hull_Y = HullComputation(data_gen.points_Y, "Y = Q_tur * Q_bp1")
+hull_Z = HullComputation(data_gen.points_Z, "Z = Q_tot * Q_tot1")
+
+hull_X.print_plane_equations()
+hull_Y.print_plane_equations()
+hull_Z.print_plane_equations()
+
+Plotter(data_gen, hull_X, hull_Y, hull_Z)
+
+### Assign sets
 LMP = {(t): LMP_values[i] for i, t in enumerate(time)}
 T_RM61_hourly = {(t): T_RM61_hourly_values[i] for i, t in enumerate(time)}
 dT_hourly = {(t): dT_hourly_values[i] for i, t in enumerate(time)}
@@ -54,6 +86,12 @@ solver = pywraplp.Solver.CreateSolver('GLOP')
 q_bp = {(t, u): solver.NumVar(Q_bp_min[t, u], Q_bp_max[t, u], 'q_bp[%s,%s]' % (t, u)) for t in time for u in units}
 q_tur = {(t, u): solver.NumVar(Q_tur_min[t, u], Q_tur_max[t, u], 'q_tur[%s,%s]' % (t, u)) for t in time for u in units}
 q_tot = {(t, u): solver.NumVar(Q_tot_min[t], Q_tot_max[t], 'q_tot[%s,%s]' % (t, u)) for t in time for u in units}
+q_bp_t_tur_t1 = {(t, u): solver.NumVar(Q_bp_min[t, u]*Q_tur_min[t,u], Q_bp_max[t,u]*Q_tur_max[t,u], 'q_bp_t_tur_t1[%s,%s]' % (t, u)) for t in time for u in units}
+q_tur_t_bp_t1 = {(t, u): solver.NumVar(Q_bp_min[t,u]*Q_tur_min[t,u], Q_bp_max[t,u]*Q_tur_max[t,u], 'q_tur_t_bp_t1[%s,%s]' % (t, u)) for t in time for u in units}
+q_tot_t_tot_t1 = {(t, u): solver.NumVar(Q_tot_min[t]*Q_tot_min[t], Q_tot_max[t]*Q_tot_max[t], 'q_tot_t_tot_t1[%s,%s]' % (t, u)) for t in time for u in units}
+q_bp_ramp_up = {(t, u): solver.NumVar(0, Q_bp_ramp_up_max, 'q_bp_ramp_up[%s,%s]' % (t, u)) for t in time for u in units}
+q_bp_ramp_down = {(t, u): solver.NumVar(0, Q_bp_ramp_down_max, 'q_bp_ramp_down[%s,%s]' % (t, u)) for t in time for u in units}
+q_tot_min = {(t, u): solver.NumVar(Q_tot_min[t], Q_tot_max[t], 'q_tot_min[%s,%s]' % (t, u)) for t in time for u in units}
 
 # Constraints
 constraints = []
@@ -106,6 +144,43 @@ for t in time:
     constraint_id_time.append(f'{t}')
     constraints.append(solver.Add(Demand[t] - sum(q_tur[t, u] * WaterToPowerConversion for u in units) >= 0))
 
+# Add constraint for bypass ramping up rate
+for u in units:
+    for i in range(len(time)):
+        t = time[i]
+        prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+        # Add ramp up constraints
+        # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
+        if i == 0:
+            constraint_id_main.append(f'Initial bypass ramping')
+            constraint_id_unit.append(f'{u}')
+            constraint_id_time.append(f'{t}')
+            constraints.append(solver.Add(q_bp[time[0], u] - q_bp[time[-1], u] <= q_bp_ramp_up[t, u]))
+        else:
+            constraint_id_main.append(f'Bypass ramping')
+            constraint_id_unit.append(f'{u}')
+            constraint_id_time.append(f'{t}')
+            constraints.append(solver.Add(q_bp[t, u] - q_bp[prev_t, u] <= q_bp_ramp_up[t, u]))
+
+# Add constraint for bypass ramping down rate
+for u in units:
+    for i in range(len(time)):
+        t = time[i]
+        prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+        # Add ramp up constraints
+        # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
+        if i == 0:
+            constraint_id_main.append(f'Initial bypass ramping')
+            constraint_id_unit.append(f'{u}')
+            constraint_id_time.append(f'{t}')
+            constraints.append(solver.Add(q_bp[time[-1], u] - q_bp[time[0], u] <= q_bp_ramp_down[t, u]))
+        else:
+            constraint_id_main.append(f'Bypass ramping')
+            constraint_id_unit.append(f'{u}')
+            constraint_id_time.append(f'{t}')
+            constraints.append(solver.Add(q_bp[prev_t, u] - q_bp[t, u] <= q_bp_ramp_down[t, u]))
+
+# Add constraint for total ramping up constraint
 for u in units:
     for i in range(len(time)):
         t = time[i]
@@ -116,13 +191,14 @@ for u in units:
             constraint_id_main.append(f'Initial ramp up constraint')
             constraint_id_unit.append(f'{u}')
             constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tot[time[0], u] - q_tot[time[-1], u] <= RampUp))
+            constraints.append(solver.Add(q_tot[time[0], u] - q_tot[time[-1], u] <= Q_tot_ramp_up))
         else:
             constraint_id_main.append(f'Ramp up constraint')
             constraint_id_unit.append(f'{u}')
             constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tot[t, u] - q_tot[prev_t, u] <= RampUp))
+            constraints.append(solver.Add(q_tot[t, u] - q_tot[prev_t, u] <= Q_tot_ramp_up))
 
+# Add constraint for total ramping down constraint
 for u in units:
     for i in range(len(time)):
         t = time[i]
@@ -131,51 +207,132 @@ for u in units:
             constraint_id_main.append(f'Initial ramp down constraint')
             constraint_id_unit.append(f'{u}')
             constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tot[time[-1], u] - q_tot[time[0], u] <= RampDown))
+            constraints.append(solver.Add(q_tot[time[-1], u] - q_tot[time[0], u] <= Q_tot_ramp_down))
         else:
             constraint_id_main.append(f'Ramp down constraint')
             constraint_id_unit.append(f'{u}')
             constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tot[prev_t, u] - q_tot[t, u] <= RampDown))
+            constraints.append(solver.Add(q_tot[prev_t, u] - q_tot[t, u] <= Q_tot_ramp_down))
 
-# #Temperature ramp up delta
-# for i in range(len(time)):
-#     t = time[i]
-#     prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-#     if i == 0:
-#         constraint_id_main.append(f'Initial temp delta hourly ramp up max')
-#         constraint_id_unit.append(f'')
-#         constraint_id_time.append(f'{t}')
-#         constraints.append(solver.Add(sum(q_bp[time[0], u] * T_bp[time[0], u] + q_tur[time[0], u] * T_tur[time[0], u] -
-#                                       (q_bp[time[-1], u] * T_bp[time[-1], u] + q_tur[time[-1], u] * T_tur[time[-1], u]) for u in units) <=
-#                                       T_ramp_up_delta * sum(q_tot[time[-1], u] for u in units)))
-#     else:
-#         constraint_id_main.append(f'Temp delta hourly ramp up max')
-#         constraint_id_unit.append(f'')
-#         constraint_id_time.append(f'{t}')
-#         constraints.append(solver.Add(sum(q_bp[t, u] * T_bp[t, u] + q_tur[t, u] * T_tur[t, u] -
-#                                       (q_bp[prev_t, u] * T_bp[prev_t, u] + q_tur[prev_t, u] * T_tur[prev_t, u]) for u in units) <=
-#                                       T_ramp_up_delta * sum(q_tot[prev_t, u] for u in units)))
-#
-# #Temperature ramp down delta
-# for i in range(len(time)):
-#     t = time[i]
-#     prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-#     if i == 0:
-#         constraint_id_main.append(f'Initial temp delta hourly ramp down max')
-#         constraint_id_unit.append(f'')
-#         constraint_id_time.append(f'{t}')
-#         constraints.append(solver.Add(sum(q_bp[time[0], u] * T_bp[time[0], u] + q_tur[time[0], u] * T_tur[time[0], u] -
-#                                       (q_bp[time[-1], u] * T_bp[time[-1], u] + q_tur[time[-1], u] * T_tur[time[-1], u]) for u in units) >=
-#                                       -T_ramp_down_delta * sum(q_tot[time[-1], u] for u in units)))
-#     else:
-#         constraint_id_main.append(f'Temp delta hourly ramp down max')
-#         constraint_id_unit.append(f'')
-#         constraint_id_time.append(f'{t}')
-#         constraints.append(solver.Add(sum(q_bp[t, u] * T_bp[t, u] + q_tur[t, u] * T_tur[t, u] -
-#                                       (q_bp[prev_t, u] * T_bp[prev_t, u] + q_tur[prev_t, u] * T_tur[prev_t, u]) for u in units) >=
-#                                       -T_ramp_down_delta * sum(q_tot[prev_t, u] for u in units)))
+#####################################################################
+##### Hull surface area constraints
+for u in units:
+    for t in time:
+        constraint_id_main.append(f'Initial Temperature ramp up constraint')
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
+        constraints.append(solver.Add((q_bp_t_tur_t1[t, u] - q_tur_t_bp_t1[t, u])*(T_bp[t, u] - T_tur[t, u]) <=
+                                      T_ramp_up_delta * q_tot_t_tot_t1[t, u]))
 
+for u in units:
+    for t in time:
+        constraint_id_main.append(f'Initial Temperature ramp down constraint')
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
+        constraints.append(solver.Add((q_bp_t_tur_t1[t, u] - q_tur_t_bp_t1[t, u])*(T_bp[t, u] - T_tur[t, u]) >=
+                                      -T_ramp_down_delta * q_tot_t_tot_t1[t, u]))
+
+for j in range(0,4):
+    for u in units:
+        for i in range(len(time)):
+            t = time[i]
+            prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+            if i == 0:
+                constraint_id_main.append(f'Initial hull constraint: Surface' + str(j) + ' for ' + hull_X.label)
+                constraint_id_unit.append(f'{u}')
+                constraint_id_time.append(f'{t}')
+                if hull_X.inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hull_X.plane_equations[j][0]*q_bp[time[0], u] +
+                                                  hull_X.plane_equations[j][1]*q_tur[time[-1], u] +
+                                                  hull_X.plane_equations[j][2]*q_bp_t_tur_t1[time[0], u] <=
+                                                  hull_X.plane_equations[j][3]))
+                if hull_X.inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hull_X.plane_equations[j][0]*q_bp[time[0], u] +
+                                                  hull_X.plane_equations[j][1]*q_tur[time[-1], u] +
+                                                  hull_X.plane_equations[j][2]*q_bp_t_tur_t1[time[0], u] >=
+                                                  hull_X.plane_equations[j][3]))
+            else:
+                constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hull_X.label)
+                constraint_id_unit.append(f'{u}')
+                constraint_id_time.append(f'{t}')
+                if hull_X.inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hull_X.plane_equations[j][0] * q_bp[t, u] +
+                                                  hull_X.plane_equations[j][1] * q_tur[prev_t, u] +
+                                                  hull_X.plane_equations[j][2] * q_bp_t_tur_t1[t, u] <=
+                                                  hull_X.plane_equations[j][3]))
+                if hull_X.inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hull_X.plane_equations[j][0] * q_bp[t, u] +
+                                                  hull_X.plane_equations[j][1] * q_tur[prev_t, u] +
+                                                  hull_X.plane_equations[j][2] * q_bp_t_tur_t1[t, u] >=
+                                                  hull_X.plane_equations[j][3]))
+
+for j in range(0,4):
+    for u in units:
+        for i in range(len(time)):
+            t = time[i]
+            prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+            if i == 0:
+                constraint_id_main.append(f'Initial hull constraint: Surface' + str(j) + ' for ' + hull_Y.label)
+                constraint_id_unit.append(f'{u}')
+                constraint_id_time.append(f'{t}')
+                if hull_Y.inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hull_Y.plane_equations[j][0]*q_tur[time[0], u] +
+                                                  hull_Y.plane_equations[j][1]*q_bp[time[-1], u] +
+                                                  hull_Y.plane_equations[j][2]*q_tur_t_bp_t1[time[0], u] <=
+                                                  hull_Y.plane_equations[j][3]))
+                if hull_Y.inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hull_Y.plane_equations[j][0]*q_tur[time[0], u] +
+                                                  hull_Y.plane_equations[j][1]*q_bp[time[-1], u] +
+                                                  hull_Y.plane_equations[j][2]*q_tur_t_bp_t1[time[0], u] >=
+                                                  hull_Y.plane_equations[j][3]))
+            else:
+                constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hull_Y.label)
+                constraint_id_unit.append(f'{u}')
+                constraint_id_time.append(f'{t}')
+                if hull_Y.inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hull_Y.plane_equations[j][0] * q_tur[t, u] +
+                                                  hull_Y.plane_equations[j][1] * q_bp[prev_t, u] +
+                                                  hull_Y.plane_equations[j][2] * q_tur_t_bp_t1[t, u] <=
+                                                  hull_Y.plane_equations[j][3]))
+                if hull_Y.inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hull_Y.plane_equations[j][0] * q_tur[t, u] +
+                                                  hull_Y.plane_equations[j][1] * q_bp[prev_t, u] +
+                                                  hull_Y.plane_equations[j][2] * q_tur_t_bp_t1[t, u] >=
+                                                  hull_Y.plane_equations[j][3]))
+
+for j in range(0,4):
+    for u in units:
+        for i in range(len(time)):
+            t = time[i]
+            prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+            if i == 0:
+                constraint_id_main.append(f'Initial hull constraint: Surface' + str(j) + ' for ' + hull_Z.label)
+                constraint_id_unit.append(f'{u}')
+                constraint_id_time.append(f'{t}')
+                if hull_Z.inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hull_Z.plane_equations[j][0]*q_tot[time[0], u] +
+                                                  hull_Z.plane_equations[j][1]*q_tot[time[-1], u] +
+                                                  hull_Z.plane_equations[j][2]*q_tot_t_tot_t1[time[0], u] <=
+                                                  hull_Z.plane_equations[j][3]))
+                if hull_Z.inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hull_Z.plane_equations[j][0]*q_tot[time[0], u] +
+                                                  hull_Z.plane_equations[j][1]*q_tot[time[-1], u] +
+                                                  hull_Z.plane_equations[j][2]*q_tot_t_tot_t1[time[0], u] >=
+                                                  hull_Z.plane_equations[j][3]))
+            else:
+                constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hull_Z.label)
+                constraint_id_unit.append(f'{u}')
+                constraint_id_time.append(f'{t}')
+                if hull_Z.inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hull_Z.plane_equations[j][0] * q_tot[t, u] +
+                                                  hull_Z.plane_equations[j][1] * q_tot[prev_t, u] +
+                                                  hull_Z.plane_equations[j][2] * q_tot_t_tot_t1[t, u] <=
+                                                  hull_Z.plane_equations[j][3]))
+                if hull_Z.inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hull_Z.plane_equations[j][0] * q_tot[t, u] +
+                                                  hull_Z.plane_equations[j][1] * q_tot[prev_t, u] +
+                                                  hull_Z.plane_equations[j][2] * q_tot_t_tot_t1[t, u] >=
+                                                  hull_Z.plane_equations[j][3]))
 
 
 # Objective
@@ -183,6 +340,11 @@ objective = solver.Objective()
 for u in units:
     for t in time:
         objective.SetCoefficient(q_tur[t, u], LMP[t]*WaterToPowerConversion)
+
+for u in units:
+    for t in time:
+        objective.SetCoefficient(q_bp_ramp_down[t, u], -C_bp_ramp_down)
+        objective.SetCoefficient(q_bp_ramp_up[t, u], -C_bp_ramp_up)
 
 objective.SetMaximization()
 
@@ -242,6 +404,11 @@ if status == pywraplp.Solver.OPTIMAL:
     results['q_tur'] = process_u_t_data(q_tur)
     results['q_bp'] = process_u_t_data(q_bp)
     results['q_tot'] = process_u_t_data(q_tot)
+    results['q_bp_t_tur_t1'] = process_u_t_data(q_bp_t_tur_t1)
+    results['q_tur_t_bp_t1'] = process_u_t_data(q_tur_t_bp_t1)
+    results['q_tot_t_tot_t1'] = process_u_t_data(q_tot_t_tot_t1)
+    results['q_bp_ramp_up'] = process_u_t_data(q_bp_ramp_up)
+    results['q_bp_ramp_down'] = process_u_t_data(q_bp_ramp_down)
     results['T_dam'] = (results['q_tur'] * process_u_t_data(T_tur, input=True) + results['q_bp'] * process_u_t_data(T_bp, input=True)) / results['q_tot']
     results['T_RM61'] = results['T_dam'].T + process_t_data(dT_hourly, input=True,col_name='UnitA')
     results['T_RM61'].columns = ['T_RM61']
@@ -362,154 +529,4 @@ plt.tight_layout()
 plt.show()
 
 
-#####################################################################
-# 3d contur plot
-########################
-
-import numpy as np
-import matplotlib.pyplot as plt
-import  matplotlib.gridspec as gridspec
-from scipy.spatial import ConvexHull
-
-x = np.linspace(Q_tur_min_values, Q_tur_max_values, 10, endpoint=True)
-y = np.linspace(Q_bp_min_values, Q_bp_max_values, 10, endpoint=True)
-
-# Generate the meshgrid for the pairs of equal variables
-Q_tur, Q_bp, Q_tur1, Q_bp1 = np.meshgrid(x, y, x, y, indexing='ij')
-
-# Example function to evaluate
-Q_tot = Q_tur + Q_bp
-Q_tot1 = Q_tur1 + Q_bp1
-X = Q_bp * Q_tur1
-Y = Q_tur * Q_bp1
-Z = Q_tot * Q_tot1
-
-# Flatten the arrays for convex hull computation
-points_X = np.c_[Q_bp.flatten(), Q_tur1.flatten(), X.flatten()]
-points_Y = np.c_[Q_tur.flatten(), Q_bp1.flatten(), Y.flatten()]
-points_Z = np.c_[Q_tot.flatten(), Q_tot1.flatten(), Z.flatten()]
-
-
-# Function to compute convex hull, plane equations, and centroids
-# Function to compute convex hull, plane equations, centroids, and inequality signs
-def compute_hull_and_planes(points):
-    hull = ConvexHull(points)
-
-    plane_equations = []
-    inequality_signs = []
-    simplex_centroids = []
-
-    # Calculate centroid of the points as a reference point
-    centroid = np.mean(points, axis=0)
-
-    # Function to calculate the plane equation from three points and normalize it
-    def normalized_plane_equation(p1, p2, p3):
-        v1 = p2 - p1
-        v2 = p3 - p1
-        normal = np.cross(v1, v2)
-        a, b, c = normal
-        d = np.dot(normal, p1)
-        norm = np.linalg.norm(normal)
-        a, b, c, d = a / norm, b / norm, c / norm, d / norm
-        return a, b, c, d
-
-    # Loop over the simplices (facets) and compute the normalized plane equations
-    for simplex in hull.simplices:
-        p1 = points[simplex[0]]
-        p2 = points[simplex[1]]
-        p3 = points[simplex[2]]
-        a, b, c, d = normalized_plane_equation(p1, p2, p3)
-        plane_equations.append((a, b, c, d))
-        # Determine inequality direction
-        value_at_centroid = a * centroid[0] + b * centroid[1] + c * centroid[2] - d
-        if value_at_centroid < 0:
-            inequality_signs.append("<=")
-        else:
-            inequality_signs.append(">=")
-        # Calculate centroid of the simplex
-        simplex_centroid = np.mean([p1, p2, p3], axis=0)
-        simplex_centroids.append(simplex_centroid)
-
-    return hull, plane_equations, inequality_signs, simplex_centroids
-
-
-# Compute hulls and planes for X, Y, Z
-hull_X, plane_eqs_X, ineq_sign_X, centroids_X = compute_hull_and_planes(points_X)
-hull_Y, plane_eqs_Y, ineq_sign_Y, centroids_Y = compute_hull_and_planes(points_Y)
-hull_Z, plane_eqs_Z, ineq_sign_Z, centroids_Z = compute_hull_and_planes(points_Z)
-
-print("Plane Equations for X = Q_bp * Q_tur1:")
-for i, ((a, b, c, d), sign) in enumerate(zip(plane_eqs_X, ineq_sign_X)):
-    print(f"Plane {i}: {a:.3f}x + {b:.3f}y + {c:.3f}z {sign} {d:.3f}")
-
-print("\nPlane Equations for Y = Q_tur * Q_bp1:")
-for i, ((a, b, c, d), sign) in enumerate(zip(plane_eqs_Y, ineq_sign_Y)):
-    print(f"Plane {i}: {a:.3f}x + {b:.3f}y + {c:.3f}z {sign} {d:.3f}")
-
-print("\nPlane Equations for Z = Q_tot * Q_tot1:")
-for i, ((a, b, c, d), sign) in enumerate(zip(plane_eqs_Z, ineq_sign_Z)):
-    print(f"Plane {i}: {a:.3f}x + {b:.3f}y + {c:.3f}z {sign} {d:.3f}")
-
-# Create a 2-column, 2-row grid of subplots
-fig = plt.figure(figsize=(14, 12))
-gs = gridspec.GridSpec(2, 2, figure=fig)
-
-# Assign specific axes to variables
-ax1 = fig.add_subplot(gs[0, 0], projection='3d')  # First row, first column
-ax2 = fig.add_subplot(gs[0, 1], projection='3d')  # First row, second column
-ax3 = fig.add_subplot(gs[1, 0], projection='3d')  # Second row, first column
-ax4 = fig.add_subplot(gs[1, 1], projection='3d')  # Second row, second column
-
-# Plot for X = Q_bp * Q_tur1
-ax3.scatter(points_X[:, 0], points_X[:, 1], points_X[:, 2], c='b', marker='o', label='Data points')
-for simplex in hull_X.simplices:
-    simplex_points = points_X[simplex]
-    ax3.plot_trisurf(simplex_points[:, 0], simplex_points[:, 1], simplex_points[:, 2], color='r', alpha=0.3, label='Convex Hull')
-ax3.set_xlabel('$Q_{bp,t}$')
-ax3.set_ylabel('$Q_{tur,t-1}$')
-ax3.set_zlabel('$Q_{bp,t} \cdot Q_{tur,t-1}$')
-ax3.set_title('Scatter plot with Convex Hull for $X$')
-ax3.invert_xaxis()
-
-# Plot for Z = Q_tot * Q_tot1
-ax4.scatter(points_Z[:, 0], points_Z[:, 1], points_Z[:, 2], c='b', marker='o', label='Data points')
-for simplex in hull_Z.simplices:
-    simplex_points = points_Z[simplex]
-    ax4.plot_trisurf(simplex_points[:, 0], simplex_points[:, 1], simplex_points[:, 2], color='r', alpha=0.3, label='Convex Hull')
-ax4.set_xlabel('$Q_{tot,t}$')
-ax4.set_ylabel('$Q_{tot,t-1}$')
-ax4.set_zlabel('$Q_{tot,t} \cdot Q_{tot,t-1}$')
-ax4.set_title('Scatter plot with Convex Hull for $Z$')
-ax4.invert_xaxis()
-
-# Meshgrid data for surface plots
-Q_bp_mesh, Q_tur_mesh = np.meshgrid(x, y)
-X_mesh = Q_bp_mesh * Q_tur_mesh
-Q_tot_mesh, Q_tot1_mesh = np.meshgrid(x + y, x + y)
-Z_mesh = Q_tot_mesh * Q_tot1_mesh
-
-# Surface plot for X = Q_bp * Q_tur1
-surf_real1 = ax1.plot_surface(Q_bp_mesh, Q_tur_mesh, X_mesh, cmap='viridis', label='Surface')
-ax1.set_xlabel('$Q_{bp,t}$')
-ax1.set_ylabel('$Q_{tur,t-1}$')
-ax1.set_zlabel('$Q_{bp,t} \cdot Q_{tur,t-1}$')
-ax1.set_title('Surface plot for $X$')
-ax1.invert_xaxis()
-# cbar1 = fig.colorbar(surf_real1, ax=ax1, orientation='horizontal', shrink=0.5, aspect=30, pad=0)
-# cbar1.set_label('Surface Intensity')
-
-# Surface plot for Z = Q_tot * Q_tot1
-surf_real3 = ax2.plot_surface(Q_tot_mesh, Q_tot1_mesh, Z_mesh, cmap='viridis', label='Surface')
-ax2.set_xlabel('$Q_{tot,t}$')
-ax2.set_ylabel('$Q_{tot,t-1}$')
-ax2.set_zlabel('$Q_{tot,t} \cdot Q_{tot,t-1}$')
-ax2.set_title('Surface plot for $Z$')
-ax2.invert_xaxis()
-# cbar2 = fig.colorbar(surf_real3, ax=ax2, orientation='horizontal', shrink=0.5, aspect=30, pad=0)
-# cbar2.set_label('Surface Intensity')
-
-# Set layout and save the figure
-plt.tight_layout()
-plt.savefig('Qbp-Qtur-T.png', dpi=300, bbox_inches='tight')
-plt.show()
-
+###### Process delta t
