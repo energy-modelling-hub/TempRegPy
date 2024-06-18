@@ -13,93 +13,97 @@ time = ["t{:02}".format(i) for i in range(1, 25)]
 units = ["UnitA"]
 plants = ["PlantA"]
 
+input_data = {}
 # Parameters
-LMP_values = [46.85, 45.06, 43.83, 42.55, 42.62, 46.61, 76.48, 77.49, 73.64, 68.51, 67.62, 69.34, 69.23, 74.68, 86.84, 97.79, 91.29, 99.07, 103.56, 108.67, 98.73, 91.91, 53.34, 48.72]
-T_RM61_hourly_max_values = [15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 18, 18, 18, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5]
-T_RM61_hourly_min_values = [14 for i in range (1, 25)] # °C
-dT_hourly_values = [1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5]
-# # # Define the possible values and their weights (for clustering)
-# possible_values = [1.5, 2.5, 3.5, 5.0]
-# weights = [5, 2, 1, 1]  # Adjust weights based on how frequently you want each value
-# dT_hourly_values = [random.choices(possible_values, weights=weights)[0] for _ in range(24)]
-T_ramp_up_delta = 1 # °C
-T_ramp_down_delta = 1 # °C
-T_RM61_daily = 15.5 # °C
-dT_daily = 1.5 # °C
-T_bp_values = [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5] # °C
-T_tur_values = [15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5] # °C
-Demand_values = [1000 for i in range (1, 25)] # MW
-Q_tot_daily = 235003 # CFS
-# Q_tot_daily = 180003 # CFS
-Q_max_daily_change = 8000 # CFS
-WaterToPowerConversion = 0.0354538 # MW/CFS
-Q_bp_min_values = [0 for i in range (1, 25)] # CFS
-Q_bp_max_values = [15000 for i in range (1, 25)] # CFS
-Q_tur_min_values = [2400 for i in range (1, 25)] # CFS
-Q_tur_max_values = [25000 for i in range (1, 25)] # CFS
-Q_tot_min_values = [7000 for i in range (1, 25)] # CFS
-Q_tot_max_values = [12100 for i in range (1, 25)] # CFS
-Q_bp_ramp_down_max = 15000
-Q_bp_ramp_up_max = 15000
-Q_tur_ramp_down_max = 4000
-Q_tur_ramp_up_max = 25000
-Q_tot_ramp_up_max = 4000 # CFS/h
-Q_tot_ramp_down_max = 2500 # CFS/h
-C_bp_ramp_up = 1
-C_bp_ramp_down = 1
-C_tur_ramp_up = 1
-C_tur_ramp_down = 1
-C_tot_ramp_up = 1
-C_tot_ramp_down = 1
+input_data['LMP_values'] = [46.85, 45.06, 43.83, 42.55, 42.62, 46.61, 76.48, 77.49, 73.64, 68.51, 67.62, 69.34, 69.23, 74.68, 86.84, 97.79, 91.29, 99.07, 103.56, 108.67, 98.73, 91.91, 53.34, 48.72]
+input_data['T_RM61_hourly_max_values'] = [15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 18, 18, 18, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5]
+input_data['T_RM61_hourly_min_values'] = [14 for i in range (1, 25)] # °C
+input_data['dT_hourly_values'] = [1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5]
+input_data['T_ramp_up_delta'] = 0 # °C
+input_data['T_ramp_down_delta'] = 0 # °C
+input_data['T_RM61_daily'] = 15.5 # °C
+input_data['dT_daily'] = 1.5 # °C
+input_data['T_bp_values'] = [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5] # °C
+input_data['T_tur_values'] = [15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5] # °C
+input_data['Demand_values'] = [1000 for i in range (1, 25)] # MW
+input_data['Q_tot_daily'] = 235003 # CFS
+input_data['Q_max_daily_change'] = 8000 # CFS
+input_data['WaterToPowerConversion'] = 0.0354538 # MW/CFS
+input_data['Q_bp_min_values'] = [0 for i in range (1, 25)] # CFS
+input_data['Q_bp_max_values'] = [15000 for i in range (1, 25)] # CFS
+input_data['Q_tur_min_values'] = [2400 for i in range (1, 25)] # CFS
+input_data['Q_tur_max_values'] = [25000 for i in range (1, 25)] # CFS
+input_data['Q_tot_min_values'] = [7000 for i in range (1, 25)] # CFS
+input_data['Q_tot_max_values'] = [12100 for i in range (1, 25)] # CFS
+input_data['Q_bp_ramp_down_max'] = 15000
+input_data['Q_bp_ramp_up_max'] = 15000
+input_data['Q_tur_ramp_down_max'] = 4000
+input_data['Q_tur_ramp_up_max'] = 25000
+input_data['Q_tot_ramp_up_max'] = 4000 # CFS/h
+input_data['Q_tot_ramp_down_max'] = 2500 # CFS/h
+input_data['C_bp_ramp_up'] = 1
+input_data['C_bp_ramp_down'] = 1
+input_data['C_tur_ramp_up'] = 1
+input_data['C_tur_ramp_down'] = 1
+input_data['C_tot_ramp_up'] = 1
+input_data['C_tot_ramp_down'] = 1
+input_data['P_tur_max_values'] = [1000 for i in range (1, 25)] # CFS
+input_data['P_tur_min_values'] = [0 for i in range (1, 25)] # CFS
 
 # maximum release within 24h cant be more than X
 # daily total change 8000 CFS 8000 <= qtot_t - qtot_t+dt <=8000 (for all hours)
 # q_tot_t > qmin q_tot_t <= 8000
 
+hulls = {}
 ### Compute hull coefficients
-data_gen = DataGenerator(Q_tur_min_values, Q_tur_max_values, Q_bp_min_values, Q_bp_max_values, Q_tot_min_values, Q_tot_max_values)
-hull_X = HullComputation(data_gen.points_X, "X = Q_bp * Q_tur1")
-hull_Y = HullComputation(data_gen.points_Y, "Y = Q_tur * Q_bp1")
-hull_Z = HullComputation(data_gen.points_Z, "Z = Q_tot * Q_tot1")
+data_gen = DataGenerator(input_data['Q_tur_min_values'], input_data['Q_tur_max_values'], input_data['Q_bp_min_values'], input_data['Q_bp_max_values'], input_data['Q_tot_min_values'], input_data['Q_tot_max_values'])
+hulls['hull_X'] = HullComputation(data_gen.points_X, "X = Q_bp * Q_tur1")
+hulls['hull_Y'] = HullComputation(data_gen.points_Y, "Y = Q_tur * Q_bp1")
+hulls['hull_Z'] = HullComputation(data_gen.points_Z, "Z = Q_tot * Q_tot1")
 
-hull_X.print_plane_equations()
-hull_Y.print_plane_equations()
-hull_Z.print_plane_equations()
+hulls['hull_X'].print_plane_equations()
+hulls['hull_Y'].print_plane_equations()
+hulls['hull_Z'].print_plane_equations()
 
-Plotter(data_gen, hull_X, hull_Y, hull_Z)
+Plotter(data_gen, hulls['hull_X'], hulls['hull_Y'], hulls['hull_Z'])
 
-### Assign sets
-LMP = {(t): LMP_values[i] for i, t in enumerate(time)}
-T_RM61_hourly_max = {(t): T_RM61_hourly_max_values[i] for i, t in enumerate(time)}
-T_RM61_hourly_min = {(t): T_RM61_hourly_min_values[i] for i, t in enumerate(time)}
-dT_hourly = {(t): dT_hourly_values[i] for i, t in enumerate(time)}
-T_bp = {(t, u): T_bp_values[i] for i, t in enumerate(time) for u in units}
-T_tur = {(t, u): T_tur_values[i] for i, t in enumerate(time) for u in units}
-Q_bp_min = {(t, u): Q_bp_min_values[i] for i, t in enumerate(time) for u in units}
-Q_bp_max = {(t, u): Q_bp_max_values[i] for i, t in enumerate(time) for u in units}
-Q_tur_min = {(t, u): Q_tur_min_values[i] for i, t in enumerate(time) for u in units}
-Q_tur_max = {(t, u): Q_tur_max_values[i] for i, t in enumerate(time) for u in units}
-Q_tot_min = {t: Q_tot_min_values[i] for i, t in enumerate(time)}
-Q_tot_max = {t: Q_tot_max_values[i] for i, t in enumerate(time)}
-Demand = {(t): Demand_values[i] for i, t in enumerate(time)}
+### Assign parameters
+parameters = {}
+parameters['LMP'] = {(t): input_data['LMP_values'][i] for i, t in enumerate(time)}
+parameters['T_RM61_hourly_max'] = {(t): input_data['T_RM61_hourly_max_values'][i] for i, t in enumerate(time)}
+parameters['T_RM61_hourly_min'] = {(t): input_data['T_RM61_hourly_min_values'][i] for i, t in enumerate(time)}
+parameters['dT_hourly'] = {(t): input_data['dT_hourly_values'][i] for i, t in enumerate(time)}
+parameters['T_bp'] = {(t, u): input_data['T_bp_values'][i] for i, t in enumerate(time) for u in units}
+parameters['T_tur'] = {(t, u): input_data['T_tur_values'][i] for i, t in enumerate(time) for u in units}
+parameters['Q_bp_min'] = {(t, u): input_data['Q_bp_min_values'][i] for i, t in enumerate(time) for u in units}
+parameters['Q_bp_max'] = {(t, u): input_data['Q_bp_max_values'][i] for i, t in enumerate(time) for u in units}
+parameters['Q_tur_min'] = {(t, u): input_data['Q_tur_min_values'][i] for i, t in enumerate(time) for u in units}
+parameters['Q_tur_max'] = {(t, u): input_data['Q_tur_max_values'][i] for i, t in enumerate(time) for u in units}
+parameters['P_tur_min'] = {(t, u): input_data['P_tur_min_values'][i] for i, t in enumerate(time) for u in units}
+parameters['P_tur_max'] = {(t, u): input_data['P_tur_max_values'][i] for i, t in enumerate(time) for u in units}
+parameters['Q_tot_min'] = {t: input_data['Q_tot_min_values'][i] for i, t in enumerate(time)}
+parameters['Q_tot_max'] = {t: input_data['Q_tot_max_values'][i] for i, t in enumerate(time)}
+parameters['Demand'] = {(t): input_data['Demand_values'][i] for i, t in enumerate(time)}
 
 # Create solver
 solver = pywraplp.Solver.CreateSolver('GLOP')
 
+variables = {}
 # Variables
-q_bp = {(t, u): solver.NumVar(Q_bp_min[t, u], Q_bp_max[t, u], 'q_bp[%s,%s]' % (t, u)) for t in time for u in units}
-q_tur = {(t, u): solver.NumVar(Q_tur_min[t, u], Q_tur_max[t, u], 'q_tur[%s,%s]' % (t, u)) for t in time for u in units}
-q_tot = {(t, u): solver.NumVar(Q_tot_min[t], Q_tot_max[t], 'q_tot[%s,%s]' % (t, u)) for t in time for u in units}
-q_bp_t_tur_t1 = {(t, u): solver.NumVar(Q_bp_min[t, u]*Q_tur_min[t,u], Q_bp_max[t,u]*Q_tur_max[t,u], 'q_bp_t_tur_t1[%s,%s]' % (t, u)) for t in time for u in units}
-q_tur_t_bp_t1 = {(t, u): solver.NumVar(Q_bp_min[t,u]*Q_tur_min[t,u], Q_bp_max[t,u]*Q_tur_max[t,u], 'q_tur_t_bp_t1[%s,%s]' % (t, u)) for t in time for u in units}
-q_tot_t_tot_t1 = {(t, u): solver.NumVar(Q_tot_min[t]*Q_tot_min[t], Q_tot_max[t]*Q_tot_max[t], 'q_tot_t_tot_t1[%s,%s]' % (t, u)) for t in time for u in units}
-q_bp_ramp_up = {(t, u): solver.NumVar(0, Q_bp_ramp_up_max, 'q_bp_ramp_up[%s,%s]' % (t, u)) for t in time for u in units}
-q_bp_ramp_down = {(t, u): solver.NumVar(0, Q_bp_ramp_down_max, 'q_bp_ramp_down[%s,%s]' % (t, u)) for t in time for u in units}
-q_tur_ramp_up = {(t, u): solver.NumVar(0, Q_tur_ramp_up_max, 'q_tur_ramp_up[%s,%s]' % (t, u)) for t in time for u in units}
-q_tur_ramp_down = {(t, u): solver.NumVar(0, Q_tur_ramp_down_max, 'q_tur_ramp_down[%s,%s]' % (t, u)) for t in time for u in units}
-q_tot_ramp_up = {(t, u): solver.NumVar(0, Q_tot_ramp_up_max, 'q_tot_ramp_up[%s,%s]' % (t, u)) for t in time for u in units}
-q_tot_ramp_down = {(t, u): solver.NumVar(0, Q_tot_ramp_down_max, 'q_tot_ramp_down[%s,%s]' % (t, u)) for t in time for u in units}
-q_tot_min = {(u): solver.NumVar(min(Q_tot_min.values()), max(Q_tot_max.values()), 'q_tot_min[%s]' % (u)) for u in units}
+variables['q_bp'] = {(t, u): solver.NumVar(parameters['Q_bp_min'][t, u], parameters['Q_bp_max'][t, u], 'q_bp[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_tur'] = {(t, u): solver.NumVar(parameters['Q_tur_min'][t, u], parameters['Q_tur_max'][t, u], 'q_tur[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_tot'] = {(t, u): solver.NumVar(parameters['Q_tot_min'][t], parameters['Q_tot_max'][t], 'q_tot[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_bp_t_tur_t1'] = {(t, u): solver.NumVar(parameters['Q_bp_min'][t, u]*parameters['Q_tur_min'][t,u], parameters['Q_bp_max'][t,u]*parameters['Q_tur_max'][t,u], 'q_bp_t_tur_t1[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_tur_t_bp_t1'] = {(t, u): solver.NumVar(parameters['Q_bp_min'][t,u]*parameters['Q_tur_min'][t,u], parameters['Q_bp_max'][t,u]*parameters['Q_tur_max'][t,u], 'q_tur_t_bp_t1[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_tot_t_tot_t1'] = {(t, u): solver.NumVar(parameters['Q_tot_min'][t]*parameters['Q_tot_min'][t], parameters['Q_tot_max'][t]*parameters['Q_tot_max'][t], 'q_tot_t_tot_t1[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_bp_ramp_up'] = {(t, u): solver.NumVar(0, input_data['Q_bp_ramp_up_max'], 'q_bp_ramp_up[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_bp_ramp_down'] = {(t, u): solver.NumVar(0, input_data['Q_bp_ramp_down_max'], 'q_bp_ramp_down[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_tur_ramp_up'] = {(t, u): solver.NumVar(0, input_data['Q_tur_ramp_up_max'], 'q_tur_ramp_up[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_tur_ramp_down'] = {(t, u): solver.NumVar(0, input_data['Q_tur_ramp_down_max'], 'q_tur_ramp_down[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_tot_ramp_up'] = {(t, u): solver.NumVar(0, input_data['Q_tot_ramp_up_max'], 'q_tot_ramp_up[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_tot_ramp_down'] = {(t, u): solver.NumVar(0, input_data['Q_tot_ramp_down_max'], 'q_tot_ramp_down[%s,%s]' % (t, u)) for t in time for u in units}
+variables['q_tot_min'] = {(u): solver.NumVar(min(parameters['Q_tot_min'].values()), max(parameters['Q_tot_max'].values()), 'q_tot_min[%s]' % (u)) for u in units}
+variables['p_tur'] = {(t, u): solver.NumVar(parameters['P_tur_min'][t, u], parameters['P_tur_max'][t, u], 'p_tur[%s,%s]' % (t, u)) for t in time for u in units}
 
 # Constraints
 constraints = []
@@ -113,21 +117,21 @@ for u in units:
         constraint_id_main.append(f'Total hourly release')
         constraint_id_unit.append(f'{u}')
         constraint_id_time.append(f'{t}')
-        constraints.append(solver.Add(q_bp[t, u] + q_tur[t, u] == q_tot[t, u]))
+        constraints.append(solver.Add(variables['q_bp'][t, u] + variables['q_tur'][t, u] == variables['q_tot'][t, u]))
 
 # Add constraint for total daily release
 constraint_id_main.append('Total daily release')
 constraint_id_unit.append(f'')
 constraint_id_time.append(f'')
-constraints.append(solver.Add(sum(q_tot[t, u] for u in units for t in time) == Q_tot_daily))
+constraints.append(solver.Add(sum(variables['q_tot'][t, u] for u in units for t in time) == input_data['Q_tot_daily']))
 
 # Add constraints for maximum average daily temperature
 constraint_id_main.append(f'Maximum average daily temperature')
 constraint_id_unit.append(f'')
 constraint_id_time.append(f'')
 constraints.append(
-    solver.Add(sum(q_bp[t, u] * T_bp[t, u] + q_tur[t, u] * T_tur[t, u] for u in units for t in time) <=
-               (T_RM61_daily - dT_daily) * sum(q_tot[t, u] for u in units for t in time)))
+    solver.Add(sum(variables['q_bp'][t, u] * parameters['T_bp'][t, u] + variables['q_tur'][t, u] * parameters['T_tur'][t, u] for u in units for t in time) <=
+               (input_data['T_RM61_daily'] - input_data['dT_daily']) * sum(variables['q_tot'][t, u] for u in units for t in time)))
 
 for t in time:
     # Add constraints for maximum total daily ramping rate 8000CFS
@@ -135,7 +139,7 @@ for t in time:
     constraint_id_unit.append(f'')
     constraint_id_time.append(f'{t}')
     constraints.append(
-        solver.Add(sum(q_tot_min[u] for u in units) <= sum(q_tot[t, u] for u in units)))
+        solver.Add(sum(variables['q_tot_min'][u] for u in units) <= sum(variables['q_tot'][t, u] for u in units)))
 
 for t in time:
     # Add constraints for maximum total daily ramping rate 8000CFS
@@ -143,30 +147,39 @@ for t in time:
     constraint_id_unit.append(f'')
     constraint_id_time.append(f'{t}')
     constraints.append(
-        solver.Add(sum(q_tot_min[u] for u in units) + 8000 >= sum(q_tot[t, u] for u in units)))
+        solver.Add(sum(variables['q_tot_min'][u] for u in units) + 8000 >= sum(variables['q_tot'][t, u] for u in units)))
 
 # Add constraints for maximum hourly temperature
 for t in time:
     constraint_id_main.append(f'Maximum hourly temperature')
     constraint_id_unit.append(f'')
     constraint_id_time.append(f'{t}')
-    constraints.append(solver.Add(sum(q_bp[t, u] * T_bp[t, u] + q_tur[t, u] * T_tur[t, u] for u in units) <=
-                                  (T_RM61_hourly_max[t] - dT_hourly[t]) * sum(q_tot[t, u] for u in units)))
+    constraints.append(solver.Add(sum(variables['q_bp'][t, u] * parameters['T_bp'][t, u] + variables['q_tur'][t, u] * parameters['T_tur'][t, u] for u in units) <=
+                                  (parameters['T_RM61_hourly_max'][t] - parameters['dT_hourly'][t]) * sum(variables['q_tot'][t, u] for u in units)))
 
 # Add constraints for minimum hourly temperature
 for t in time:
     constraint_id_main.append(f'Minimum hourly temperature')
     constraint_id_unit.append(f'')
     constraint_id_time.append(f'{t}')
-    constraints.append(solver.Add(sum(q_bp[t, u] * T_bp[t, u] + q_tur[t, u] * T_tur[t, u] for u in units) >=
-                                  (T_RM61_hourly_min[t] - dT_hourly[t]) * sum(q_tot[t, u] for u in units)))
+    constraints.append(solver.Add(sum(variables['q_bp'][t, u] * parameters['T_bp'][t, u] + variables['q_tur'][t, u] * parameters['T_tur'][t, u] for u in units) >=
+                                  (parameters['T_RM61_hourly_min'][t] - parameters['dT_hourly'][t]) * sum(variables['q_tot'][t, u] for u in units)))
+
+# Add constraints for power balance
+
+for u in units:
+    for t in time:
+        constraint_id_main.append(f'Power Output')
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
+        constraints.append(solver.Add(variables['p_tur'][t, u] == variables['q_tur'][t, u] * input_data['WaterToPowerConversion']))
 
 # Add constraints for power balance
 for t in time:
-    constraint_id_main.append(f'Demand Balance')
+    constraint_id_main.append(f'Power Demand Balance')
     constraint_id_unit.append(f'')
     constraint_id_time.append(f'{t}')
-    constraints.append(solver.Add(Demand[t] - sum(q_tur[t, u] * WaterToPowerConversion for u in units) >= 0))
+    constraints.append(solver.Add(parameters['Demand'][t] - sum(variables['p_tur'][t, u] for u in units) >= 0))
 
 # Add constraint for bypass ramping up rate
 for u in units:
@@ -175,16 +188,13 @@ for u in units:
         prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
         # Add ramp up constraints
         # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
+        constraint_id_main.append(f'Bypass ramping')
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
         if i == 0:
-            constraint_id_main.append(f'Initial bypass ramping')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_bp[time[0], u] - q_bp[time[-1], u] <= q_bp_ramp_up[t, u]))
+            constraints.append(solver.Add(variables['q_bp'][time[0], u] - variables['q_bp'][time[-1], u] <= variables['q_bp_ramp_up'][t, u]))
         else:
-            constraint_id_main.append(f'Bypass ramping')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_bp[t, u] - q_bp[prev_t, u] <= q_bp_ramp_up[t, u]))
+            constraints.append(solver.Add(variables['q_bp'][t, u] - variables['q_bp'][prev_t, u] <= variables['q_bp_ramp_up'][t, u]))
 
 # Add constraint for bypass ramping down rate
 for u in units:
@@ -193,16 +203,13 @@ for u in units:
         prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
         # Add ramp up constraints
         # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
+        constraint_id_main.append(f'Bypass ramping')
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
         if i == 0:
-            constraint_id_main.append(f'Initial bypass ramping')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_bp[time[-1], u] - q_bp[time[0], u] <= q_bp_ramp_down[t, u]))
+            constraints.append(solver.Add(variables['q_bp'][time[-1], u] - variables['q_bp'][time[0], u] <= variables['q_bp_ramp_down'][t, u]))
         else:
-            constraint_id_main.append(f'Bypass ramping')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_bp[prev_t, u] - q_bp[t, u] <= q_bp_ramp_down[t, u]))
+            constraints.append(solver.Add(variables['q_bp'][prev_t, u] - variables['q_bp'][t, u] <= variables['q_bp_ramp_down'][t, u]))
 
 # Add constraint for turbine ramping up rate
 for u in units:
@@ -211,16 +218,13 @@ for u in units:
         prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
         # Add ramp up constraints
         # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
+        constraint_id_main.append(f'Turbine ramping')
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
         if i == 0:
-            constraint_id_main.append(f'Initial turbine ramping')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tur[time[0], u] - q_tur[time[-1], u] <= q_tur_ramp_up[t, u]))
+            constraints.append(solver.Add(variables['q_tur'][time[0], u] - variables['q_tur'][time[-1], u] <= variables['q_tur_ramp_up'][t, u]))
         else:
-            constraint_id_main.append(f'Turbine ramping')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tur[t, u] - q_tur[prev_t, u] <= q_tur_ramp_up[t, u]))
+            constraints.append(solver.Add(variables['q_tur'][t, u] - variables['q_tur'][prev_t, u] <= variables['q_tur_ramp_up'][t, u]))
 
 # Add constraint for turbine ramping down rate
 for u in units:
@@ -229,16 +233,13 @@ for u in units:
         prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
         # Add ramp up constraints
         # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
+        constraint_id_main.append(f'Turbine ramping')
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
         if i == 0:
-            constraint_id_main.append(f'Initial turbine ramping')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tur[time[-1], u] - q_tur[time[0], u] <= q_tur_ramp_down[t, u]))
+            constraints.append(solver.Add(variables['q_tur'][time[-1], u] - variables['q_tur'][time[0], u] <= variables['q_tur_ramp_down'][t, u]))
         else:
-            constraint_id_main.append(f'Turbine ramping')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tur[prev_t, u] - q_tur[t, u] <= q_tur_ramp_down[t, u]))
+            constraints.append(solver.Add(variables['q_tur'][prev_t, u] - variables['q_tur'][t, u] <= variables['q_tur_ramp_down'][t, u]))
 
 
 # Add constraint for total ramping up constraint
@@ -248,32 +249,26 @@ for u in units:
         prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
         # Add ramp up constraints
         # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
+        constraint_id_main.append(f'Ramp up constraint')
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
         if i == 0:
-            constraint_id_main.append(f'Initial ramp up constraint')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tot[time[0], u] - q_tot[time[-1], u] <= q_tot_ramp_up[t, u]))
+            constraints.append(solver.Add(variables['q_tot'][time[0], u] - variables['q_tot'][time[-1], u] <= variables['q_tot_ramp_up'][t, u]))
         else:
-            constraint_id_main.append(f'Ramp up constraint')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tot[t, u] - q_tot[prev_t, u] <= q_tot_ramp_up[t, u]))
+            constraints.append(solver.Add(variables['q_tot'][t, u] - variables['q_tot'][prev_t, u] <= variables['q_tot_ramp_up'][t, u]))
 
 # Add constraint for total ramping down constraint
 for u in units:
     for i in range(len(time)):
         t = time[i]
         prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+        constraint_id_main.append(f'Ramp down constraint')
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
         if i == 0:
-            constraint_id_main.append(f'Initial ramp down constraint')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tot[time[-1], u] - q_tot[time[0], u] <= q_tot_ramp_down[t, u]))
+            constraints.append(solver.Add(variables['q_tot'][time[-1], u] - variables['q_tot'][time[0], u] <= variables['q_tot_ramp_down'][t, u]))
         else:
-            constraint_id_main.append(f'Ramp down constraint')
-            constraint_id_unit.append(f'{u}')
-            constraint_id_time.append(f'{t}')
-            constraints.append(solver.Add(q_tot[prev_t, u] - q_tot[t, u] <= q_tot_ramp_down[t, u]))
+            constraints.append(solver.Add(variables['q_tot'][prev_t, u] - variables['q_tot'][t, u] <= variables['q_tot_ramp_down'][t, u]))
 
 #####################################################################
 ##### Hull surface area constraints
@@ -282,131 +277,200 @@ for u in units:
         constraint_id_main.append(f'Initial Temperature ramp up constraint')
         constraint_id_unit.append(f'{u}')
         constraint_id_time.append(f'{t}')
-        constraints.append(solver.Add((q_bp_t_tur_t1[t, u] - q_tur_t_bp_t1[t, u])*(T_bp[t, u] - T_tur[t, u]) <=
-                                      T_ramp_up_delta * q_tot_t_tot_t1[t, u]))
+        constraints.append(solver.Add((variables['q_bp_t_tur_t1'][t, u] - variables['q_tur_t_bp_t1'][t, u])*(parameters['T_bp'][t, u] - parameters['T_tur'][t, u]) <=
+                                      input_data['T_ramp_up_delta'] * variables['q_tot_t_tot_t1'][t, u]))
 
 for u in units:
     for t in time:
         constraint_id_main.append(f'Initial Temperature ramp down constraint')
         constraint_id_unit.append(f'{u}')
         constraint_id_time.append(f'{t}')
-        constraints.append(solver.Add((q_bp_t_tur_t1[t, u] - q_tur_t_bp_t1[t, u])*(T_bp[t, u] - T_tur[t, u]) >=
-                                      -T_ramp_down_delta * q_tot_t_tot_t1[t, u]))
+        constraints.append(solver.Add((variables['q_bp_t_tur_t1'][t, u] - variables['q_tur_t_bp_t1'][t, u])*(parameters['T_bp'][t, u] - parameters['T_tur'][t, u]) >=
+                                      -input_data['T_ramp_down_delta'] * variables['q_tot_t_tot_t1'][t, u]))
 
 for j in range(0,4):
     for u in units:
         for i in range(len(time)):
             t = time[i]
             prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+            constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hulls['hull_X'].label)
+            constraint_id_unit.append(f'{u}')
+            constraint_id_time.append(f'{t}')
             if i == 0:
-                constraint_id_main.append(f'Initial hull constraint: Surface' + str(j) + ' for ' + hull_X.label)
-                constraint_id_unit.append(f'{u}')
-                constraint_id_time.append(f'{t}')
-                if hull_X.inequality_signs[j] == '<=':
-                    constraints.append(solver.Add(hull_X.plane_equations[j][0]*q_bp[time[0], u] +
-                                                  hull_X.plane_equations[j][1]*q_tur[time[-1], u] +
-                                                  hull_X.plane_equations[j][2]*q_bp_t_tur_t1[time[0], u] <=
-                                                  hull_X.plane_equations[j][3]))
-                if hull_X.inequality_signs[j] == '>=':
-                    constraints.append(solver.Add(hull_X.plane_equations[j][0]*q_bp[time[0], u] +
-                                                  hull_X.plane_equations[j][1]*q_tur[time[-1], u] +
-                                                  hull_X.plane_equations[j][2]*q_bp_t_tur_t1[time[0], u] >=
-                                                  hull_X.plane_equations[j][3]))
+                if hulls['hull_X'].inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hulls['hull_X'].plane_equations[j][0]*variables['q_bp'][time[0], u] +
+                                                  hulls['hull_X'].plane_equations[j][1]*variables['q_tur'][time[-1], u] +
+                                                  hulls['hull_X'].plane_equations[j][2]*variables['q_bp_t_tur_t1'][time[0], u] <=
+                                                  hulls['hull_X'].plane_equations[j][3]))
+                if hulls['hull_X'].inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hulls['hull_X'].plane_equations[j][0]*variables['q_bp'][time[0], u] +
+                                                  hulls['hull_X'].plane_equations[j][1]*variables['q_tur'][time[-1], u] +
+                                                  hulls['hull_X'].plane_equations[j][2]*variables['q_bp_t_tur_t1'][time[0], u] >=
+                                                  hulls['hull_X'].plane_equations[j][3]))
             else:
-                constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hull_X.label)
-                constraint_id_unit.append(f'{u}')
-                constraint_id_time.append(f'{t}')
-                if hull_X.inequality_signs[j] == '<=':
-                    constraints.append(solver.Add(hull_X.plane_equations[j][0] * q_bp[t, u] +
-                                                  hull_X.plane_equations[j][1] * q_tur[prev_t, u] +
-                                                  hull_X.plane_equations[j][2] * q_bp_t_tur_t1[t, u] <=
-                                                  hull_X.plane_equations[j][3]))
-                if hull_X.inequality_signs[j] == '>=':
-                    constraints.append(solver.Add(hull_X.plane_equations[j][0] * q_bp[t, u] +
-                                                  hull_X.plane_equations[j][1] * q_tur[prev_t, u] +
-                                                  hull_X.plane_equations[j][2] * q_bp_t_tur_t1[t, u] >=
-                                                  hull_X.plane_equations[j][3]))
+                if hulls['hull_X'].inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hulls['hull_X'].plane_equations[j][0] * variables['q_bp'][t, u] +
+                                                  hulls['hull_X'].plane_equations[j][1] * variables['q_tur'][prev_t, u] +
+                                                  hulls['hull_X'].plane_equations[j][2] * variables['q_bp_t_tur_t1'][t, u] <=
+                                                  hulls['hull_X'].plane_equations[j][3]))
+                if hulls['hull_X'].inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hulls['hull_X'].plane_equations[j][0] * variables['q_bp'][t, u] +
+                                                  hulls['hull_X'].plane_equations[j][1] * variables['q_tur'][prev_t, u] +
+                                                  hulls['hull_X'].plane_equations[j][2] * variables['q_bp_t_tur_t1'][t, u] >=
+                                                  hulls['hull_X'].plane_equations[j][3]))
 
 for j in range(0,4):
     for u in units:
         for i in range(len(time)):
             t = time[i]
             prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+            constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hulls['hull_Y'].label)
+            constraint_id_unit.append(f'{u}')
+            constraint_id_time.append(f'{t}')
             if i == 0:
-                constraint_id_main.append(f'Initial hull constraint: Surface' + str(j) + ' for ' + hull_Y.label)
-                constraint_id_unit.append(f'{u}')
-                constraint_id_time.append(f'{t}')
-                if hull_Y.inequality_signs[j] == '<=':
-                    constraints.append(solver.Add(hull_Y.plane_equations[j][0]*q_tur[time[0], u] +
-                                                  hull_Y.plane_equations[j][1]*q_bp[time[-1], u] +
-                                                  hull_Y.plane_equations[j][2]*q_tur_t_bp_t1[time[0], u] <=
-                                                  hull_Y.plane_equations[j][3]))
-                if hull_Y.inequality_signs[j] == '>=':
-                    constraints.append(solver.Add(hull_Y.plane_equations[j][0]*q_tur[time[0], u] +
-                                                  hull_Y.plane_equations[j][1]*q_bp[time[-1], u] +
-                                                  hull_Y.plane_equations[j][2]*q_tur_t_bp_t1[time[0], u] >=
-                                                  hull_Y.plane_equations[j][3]))
+                if hulls['hull_Y'].inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hulls['hull_Y'].plane_equations[j][0]*variables['q_tur'][time[0], u] +
+                                                  hulls['hull_Y'].plane_equations[j][1]*variables['q_bp'][time[-1], u] +
+                                                  hulls['hull_Y'].plane_equations[j][2]*variables['q_tur_t_bp_t1'][time[0], u] <=
+                                                  hulls['hull_Y'].plane_equations[j][3]))
+                if hulls['hull_Y'].inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hulls['hull_Y'].plane_equations[j][0]*variables['q_tur'][time[0], u] +
+                                                  hulls['hull_Y'].plane_equations[j][1]*variables['q_bp'][time[-1], u] +
+                                                  hulls['hull_Y'].plane_equations[j][2]*variables['q_tur_t_bp_t1'][time[0], u] >=
+                                                  hulls['hull_Y'].plane_equations[j][3]))
             else:
-                constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hull_Y.label)
-                constraint_id_unit.append(f'{u}')
-                constraint_id_time.append(f'{t}')
-                if hull_Y.inequality_signs[j] == '<=':
-                    constraints.append(solver.Add(hull_Y.plane_equations[j][0] * q_tur[t, u] +
-                                                  hull_Y.plane_equations[j][1] * q_bp[prev_t, u] +
-                                                  hull_Y.plane_equations[j][2] * q_tur_t_bp_t1[t, u] <=
-                                                  hull_Y.plane_equations[j][3]))
-                if hull_Y.inequality_signs[j] == '>=':
-                    constraints.append(solver.Add(hull_Y.plane_equations[j][0] * q_tur[t, u] +
-                                                  hull_Y.plane_equations[j][1] * q_bp[prev_t, u] +
-                                                  hull_Y.plane_equations[j][2] * q_tur_t_bp_t1[t, u] >=
-                                                  hull_Y.plane_equations[j][3]))
+                if hulls['hull_Y'].inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hulls['hull_Y'].plane_equations[j][0] * variables['q_tur'][t, u] +
+                                                  hulls['hull_Y'].plane_equations[j][1] * variables['q_bp'][prev_t, u] +
+                                                  hulls['hull_Y'].plane_equations[j][2] * variables['q_tur_t_bp_t1'][t, u] <=
+                                                  hulls['hull_Y'].plane_equations[j][3]))
+                if hulls['hull_Y'].inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hulls['hull_Y'].plane_equations[j][0] * variables['q_tur'][t, u] +
+                                                  hulls['hull_Y'].plane_equations[j][1] * variables['q_bp'][prev_t, u] +
+                                                  hulls['hull_Y'].plane_equations[j][2] * variables['q_tur_t_bp_t1'][t, u] >=
+                                                  hulls['hull_Y'].plane_equations[j][3]))
 
 for j in range(0,4):
     for u in units:
         for i in range(len(time)):
             t = time[i]
             prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+            constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hulls['hull_Z'].label)
+            constraint_id_unit.append(f'{u}')
+            constraint_id_time.append(f'{t}')
             if i == 0:
-                constraint_id_main.append(f'Initial hull constraint: Surface' + str(j) + ' for ' + hull_Z.label)
-                constraint_id_unit.append(f'{u}')
-                constraint_id_time.append(f'{t}')
-                if hull_Z.inequality_signs[j] == '<=':
-                    constraints.append(solver.Add(hull_Z.plane_equations[j][0]*q_tot[time[0], u] +
-                                                  hull_Z.plane_equations[j][1]*q_tot[time[-1], u] +
-                                                  hull_Z.plane_equations[j][2]*q_tot_t_tot_t1[time[0], u] <=
-                                                  hull_Z.plane_equations[j][3]))
-                if hull_Z.inequality_signs[j] == '>=':
-                    constraints.append(solver.Add(hull_Z.plane_equations[j][0]*q_tot[time[0], u] +
-                                                  hull_Z.plane_equations[j][1]*q_tot[time[-1], u] +
-                                                  hull_Z.plane_equations[j][2]*q_tot_t_tot_t1[time[0], u] >=
-                                                  hull_Z.plane_equations[j][3]))
+                if hulls['hull_Z'].inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hulls['hull_Z'].plane_equations[j][0]*variables['q_tot'][time[0], u] +
+                                                  hulls['hull_Z'].plane_equations[j][1]*variables['q_tot'][time[-1], u] +
+                                                  hulls['hull_Z'].plane_equations[j][2]*variables['q_tot_t_tot_t1'][time[0], u] <=
+                                                  hulls['hull_Z'].plane_equations[j][3]))
+                if hulls['hull_Z'].inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hulls['hull_Z'].plane_equations[j][0]*variables['q_tot'][time[0], u] +
+                                                  hulls['hull_Z'].plane_equations[j][1]*variables['q_tot'][time[-1], u] +
+                                                  hulls['hull_Z'].plane_equations[j][2]*variables['q_tot_t_tot_t1'][time[0], u] >=
+                                                  hulls['hull_Z'].plane_equations[j][3]))
             else:
-                constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hull_Z.label)
-                constraint_id_unit.append(f'{u}')
-                constraint_id_time.append(f'{t}')
-                if hull_Z.inequality_signs[j] == '<=':
-                    constraints.append(solver.Add(hull_Z.plane_equations[j][0] * q_tot[t, u] +
-                                                  hull_Z.plane_equations[j][1] * q_tot[prev_t, u] +
-                                                  hull_Z.plane_equations[j][2] * q_tot_t_tot_t1[t, u] <=
-                                                  hull_Z.plane_equations[j][3]))
-                if hull_Z.inequality_signs[j] == '>=':
-                    constraints.append(solver.Add(hull_Z.plane_equations[j][0] * q_tot[t, u] +
-                                                  hull_Z.plane_equations[j][1] * q_tot[prev_t, u] +
-                                                  hull_Z.plane_equations[j][2] * q_tot_t_tot_t1[t, u] >=
-                                                  hull_Z.plane_equations[j][3]))
+                if hulls['hull_Z'].inequality_signs[j] == '<=':
+                    constraints.append(solver.Add(hulls['hull_Z'].plane_equations[j][0] * variables['q_tot'][t, u] +
+                                                  hulls['hull_Z'].plane_equations[j][1] * variables['q_tot'][prev_t, u] +
+                                                  hulls['hull_Z'].plane_equations[j][2] * variables['q_tot_t_tot_t1'][t, u] <=
+                                                  hulls['hull_Z'].plane_equations[j][3]))
+                if hulls['hull_Z'].inequality_signs[j] == '>=':
+                    constraints.append(solver.Add(hulls['hull_Z'].plane_equations[j][0] * variables['q_tot'][t, u] +
+                                                  hulls['hull_Z'].plane_equations[j][1] * variables['q_tot'][prev_t, u] +
+                                                  hulls['hull_Z'].plane_equations[j][2] * variables['q_tot_t_tot_t1'][t, u] >=
+                                                  hulls['hull_Z'].plane_equations[j][3]))
+
+# Additional hull constraints
+for u in units:
+    for i in range(len(time)):
+        t = time[i]
+        prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+        constraint_id_main.append(f'Hull constraint: Ramping down for ' + hulls['hull_X'].label)
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
+        if i == 0:
+            constraints.append(solver.Add((parameters['Q_bp_min'][time[0], u] - input_data['Q_bp_ramp_down_max']) * variables['q_tur'][time[-1], u] <= variables['q_bp_t_tur_t1'][time[0], u]))
+        else:
+            constraints.append(solver.Add((parameters['Q_bp_min'][t, u]-input_data['Q_bp_ramp_down_max'])*variables['q_tur'][prev_t, u] <= variables['q_bp_t_tur_t1'][t, u]))
+
+# Additional hull constraints
+for u in units:
+    for i in range(len(time)):
+        t = time[i]
+        prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+        constraint_id_main.append(f'Hull constraint: Ramping up for ' + hulls['hull_X'].label)
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
+        if i == 0:
+            constraints.append(solver.Add((parameters['Q_bp_max'][time[0], u] + input_data['Q_bp_ramp_up_max']) * variables['q_tur'][time[-1], u] >= variables['q_bp_t_tur_t1'][time[0], u]))
+        else:
+            constraints.append(solver.Add((parameters['Q_bp_max'][t, u] + input_data['Q_bp_ramp_up_max'])*variables['q_tur'][prev_t, u] >= variables['q_bp_t_tur_t1'][t, u]))
+
+# Additional hull constraints
+for u in units:
+    for i in range(len(time)):
+        t = time[i]
+        prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+        constraint_id_main.append(f'Hull constraint: Ramping down for ' + hulls['hull_Y'].label)
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
+        if i == 0:
+            constraints.append(solver.Add((parameters['Q_tur_min'][time[0], u] - input_data['Q_tur_ramp_down_max']) * variables['q_bp'][time[-1], u] <= variables['q_tur_t_bp_t1'][time[0], u]))
+        else:
+            constraints.append(solver.Add((parameters['Q_tur_min'][t, u]-input_data['Q_tur_ramp_down_max'])*variables['q_bp'][prev_t, u] <= variables['q_tur_t_bp_t1'][t, u]))
+
+# Additional hull constraints
+for u in units:
+    for i in range(len(time)):
+        t = time[i]
+        prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+        constraint_id_main.append(f'Hull constraint: Ramping up for ' + hulls['hull_Y'].label)
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
+        if i == 0:
+            constraints.append(solver.Add((parameters['Q_tur_max'][time[0], u] + input_data['Q_tur_ramp_up_max']) * variables['q_bp'][time[-1], u] >= variables['q_tur_t_bp_t1'][time[0], u]))
+        else:
+            constraints.append(solver.Add((parameters['Q_tur_max'][t, u] + input_data['Q_tur_ramp_up_max'])*variables['q_bp'][prev_t, u] >= variables['q_tur_t_bp_t1'][t, u]))
+
+# Additional hull constraints
+for u in units:
+    for i in range(len(time)):
+        t = time[i]
+        prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+        constraint_id_main.append(f'Hull constraint: Ramping down for ' + hulls['hull_Z'].label)
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
+        if i == 0:
+            constraints.append(solver.Add((parameters['Q_tot_min'][time[0]] - input_data['Q_tot_ramp_down_max']) * variables['q_tot'][time[-1], u] <= variables['q_tot_t_tot_t1'][time[0], u]))
+        else:
+            constraints.append(solver.Add((parameters['Q_tot_min'][t]-input_data['Q_tot_ramp_down_max'])*variables['q_tot'][prev_t, u] <= variables['q_tot_t_tot_t1'][t, u]))
+
+# Additional hull constraints
+for u in units:
+    for i in range(len(time)):
+        t = time[i]
+        prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
+        constraint_id_main.append(f'Hull constraint: Ramping up for ' + hulls['hull_Z'].label)
+        constraint_id_unit.append(f'{u}')
+        constraint_id_time.append(f'{t}')
+        if i == 0:
+            constraints.append(solver.Add((parameters['Q_tot_max'][time[0]] + input_data['Q_tot_ramp_up_max']) * variables['q_tot'][time[-1], u] >= variables['q_tot_t_tot_t1'][time[0], u]))
+        else:
+            constraints.append(solver.Add((parameters['Q_tot_max'][t] + input_data['Q_tot_ramp_up_max'])*variables['q_tot'][prev_t, u] >= variables['q_tot_t_tot_t1'][t, u]))
 
 
 # Objective
 objective = solver.Objective()
 for u in units:
     for t in time:
-        objective.SetCoefficient(q_tur[t, u], LMP[t]*WaterToPowerConversion)
-        objective.SetCoefficient(q_bp_ramp_down[t, u], -C_bp_ramp_down)
-        objective.SetCoefficient(q_bp_ramp_up[t, u], -C_bp_ramp_up)
-        objective.SetCoefficient(q_tur_ramp_down[t, u], -C_tur_ramp_down)
-        objective.SetCoefficient(q_tur_ramp_up[t, u], -C_tur_ramp_up)
-        objective.SetCoefficient(q_tot_ramp_down[t, u], -C_tot_ramp_down)
-        objective.SetCoefficient(q_tot_ramp_up[t, u], -C_tot_ramp_up)
+        objective.SetCoefficient(variables['p_tur'][t, u], parameters['LMP'][t])
+        objective.SetCoefficient(variables['q_bp_ramp_down'][t, u], -input_data['C_bp_ramp_down'])
+        objective.SetCoefficient(variables['q_bp_ramp_up'][t, u], -input_data['C_bp_ramp_up'])
+        objective.SetCoefficient(variables['q_tur_ramp_down'][t, u], -input_data['C_tur_ramp_down'])
+        objective.SetCoefficient(variables['q_tur_ramp_up'][t, u], -input_data['C_tur_ramp_up'])
+        objective.SetCoefficient(variables['q_tot_ramp_down'][t, u], -input_data['C_tot_ramp_down'])
+        objective.SetCoefficient(variables['q_tot_ramp_up'][t, u], -input_data['C_tot_ramp_up'])
 
 objective.SetMaximization()
 
@@ -478,23 +542,24 @@ if status == pywraplp.Solver.OPTIMAL:
     print('Objective value =', objective.Value())
     results = {}
     results['Objective Value'] = objective.Value()
-    results['q_tur'] = process_u_t_data(q_tur)
-    results['q_bp'] = process_u_t_data(q_bp)
-    results['q_tot'] = process_u_t_data(q_tot)
-    results['q_bp_t_tur_t1'] = process_u_t_data(q_bp_t_tur_t1)
-    results['q_tur_t_bp_t1'] = process_u_t_data(q_tur_t_bp_t1)
-    results['q_tot_t_tot_t1'] = process_u_t_data(q_tot_t_tot_t1)
-    results['q_bp_ramp_up'] = process_u_t_data(q_bp_ramp_up)
-    results['q_bp_ramp_down'] = process_u_t_data(q_bp_ramp_down)
-    results['q_tur_ramp_up'] = process_u_t_data(q_tur_ramp_up)
-    results['q_tur_ramp_down'] = process_u_t_data(q_tur_ramp_down)
-    results['q_tot_ramp_up'] = process_u_t_data(q_tur_ramp_up)
-    results['q_tot_ramp_down'] = process_u_t_data(q_tur_ramp_down)
-    results['T_dam'] = (results['q_tur'] * process_u_t_data(T_tur, input=True) + results['q_bp'] * process_u_t_data(T_bp, input=True)) / results['q_tot']
-    results['T_RM61'] = results['T_dam'].T + process_t_data(dT_hourly, input=True,col_name='UnitA')
+    results['q_tur'] = process_u_t_data(variables['q_tur'])
+    results['q_bp'] = process_u_t_data(variables['q_bp'])
+    results['q_tot'] = process_u_t_data(variables['q_tot'])
+    results['p_tur'] = process_u_t_data(variables['p_tur'])
+    results['q_bp_t_tur_t1'] = process_u_t_data(variables['q_bp_t_tur_t1'])
+    results['q_tur_t_bp_t1'] = process_u_t_data(variables['q_tur_t_bp_t1'])
+    results['q_tot_t_tot_t1'] = process_u_t_data(variables['q_tot_t_tot_t1'])
+    results['q_bp_ramp_up'] = process_u_t_data(variables['q_bp_ramp_up'])
+    results['q_bp_ramp_down'] = process_u_t_data(variables['q_bp_ramp_down'])
+    results['q_tur_ramp_up'] = process_u_t_data(variables['q_tur_ramp_up'])
+    results['q_tur_ramp_down'] = process_u_t_data(variables['q_tur_ramp_down'])
+    results['q_tot_ramp_up'] = process_u_t_data(variables['q_tot_ramp_up'])
+    results['q_tot_ramp_down'] = process_u_t_data(variables['q_tot_ramp_down'])
+    results['T_dam'] = (results['q_tur'] * process_u_t_data(parameters['T_tur'], input=True) + results['q_bp'] * process_u_t_data(parameters['T_bp'], input=True)) / results['q_tot']
+    results['T_RM61'] = results['T_dam'].T + process_t_data(parameters['dT_hourly'], input=True,col_name='UnitA')
     results['T_RM61'].columns = ['T_RM61']
     results['Dual Values'] = export_dual_values(constraints, constraint_id_main, constraint_id_unit, constraint_id_time)
-    results['q_tot_min'] = process_u_data(q_tot_min)
+    results['q_tot_min'] = process_u_data(variables['q_tot_min'])
 
     # Export results to a file
     with open('optimization_results.txt', 'w') as f:
@@ -526,12 +591,12 @@ def concat_and_rename(results, q_tur_value, q_bp_value, unit_name='UnitA'):
 
 # Usage example
 df = concat_and_rename(results, 'q_tur', 'q_bp')
-df_lmp = process_t_data(LMP, input=True, col_name='LMP')
-df_t = pd.concat([results['T_RM61'], process_t_data(T_RM61_hourly_max, input=True, col_name='T_RM61_max')], axis=1)
-df_t = pd.concat([df_t, process_t_data(T_RM61_hourly_min, input=True, col_name='T_RM61_min')], axis=1)
-# Assuming df_t and T_ramp_down_delta are already defined
-tmp_min = df_t['T_RM61'] - T_ramp_down_delta
-tmp_max = df_t['T_RM61'] + T_ramp_up_delta
+df_lmp = process_t_data(parameters['LMP'], input=True, col_name='LMP')
+df_t = pd.concat([results['T_RM61'], process_t_data(parameters['T_RM61_hourly_max'], input=True, col_name='T_RM61_max')], axis=1)
+df_t = pd.concat([df_t, process_t_data(parameters['T_RM61_hourly_min'], input=True, col_name='T_RM61_min')], axis=1)
+# Assuming df_t and input_data['T_ramp_down_delta'] are already defined
+tmp_min = df_t['T_RM61'] - input_data['T_ramp_down_delta']
+tmp_max = df_t['T_RM61'] + input_data['T_ramp_up_delta']
 # Shift the 'min' column down by one row
 df_t['T_min'] = tmp_min.shift(1)
 df_t.loc['t01', 'T_min'] = tmp_min.iloc[-1]
