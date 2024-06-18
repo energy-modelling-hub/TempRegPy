@@ -8,47 +8,91 @@ import pandas as pd
 from tempregpy import *
 import random
 
+
+import pandas as pd
+
+# Load the Excel file
+file_path = './TempRegPy.xlsx'
+excel_data = pd.ExcelFile(file_path)
+
+# Parse the relevant sheet
+df = excel_data.parse('Inputs')
+
+# Initialize the input_data dictionary
+input_data = {}
+
+# Populate the input_data dictionary
+input_data['Q_tot_daily'] = df.loc[df['Python Variable Names'] == 'Q_tot_daily', 'Single input'].values[0]
+input_data['Q_max_daily_change'] = df.loc[df['Python Variable Names'] == 'Q_max_daily_change', 'Single input'].values[0]
+input_data['Q_bp_ramp_down_max'] = df.loc[df['Python Variable Names'] == 'Q_bp_ramp_down_max', 'Single input'].values[0]
+input_data['Q_bp_ramp_up_max'] = df.loc[df['Python Variable Names'] == 'Q_bp_ramp_up_max', 'Single input'].values[0]
+input_data['Q_tur_ramp_down_max'] = df.loc[df['Python Variable Names'] == 'Q_tur_ramp_down_max', 'Single input'].values[0]
+input_data['Q_tur_ramp_up_max'] = df.loc[df['Python Variable Names'] == 'Q_tur_ramp_up_max', 'Single input'].values[0]
+input_data['Q_tot_ramp_up_max'] = df.loc[df['Python Variable Names'] == 'Q_tot_ramp_up_max', 'Single input'].values[0]
+input_data['Q_tot_ramp_down_max'] = df.loc[df['Python Variable Names'] == 'Q_tot_ramp_down_max', 'Single input'].values[0]
+input_data['T_ramp_up_delta'] = df.loc[df['Python Variable Names'] == 'T_ramp_up_delta', 'Single input'].values[0]
+input_data['T_ramp_down_delta'] = df.loc[df['Python Variable Names'] == 'T_ramp_down_delta', 'Single input'].values[0]
+input_data['T_RM61_daily'] = df.loc[df['Python Variable Names'] == 'T_RM61_daily', 'Single input'].values[0]
+input_data['dT_daily'] = df.loc[df['Python Variable Names'] == 'dT_daily', 'Single input'].values[0]
+input_data['WaterToPowerConversion'] = df.loc[df['Python Variable Names'] == 'WaterToPowerConversion', 'Single input'].values[0]
+# input_data['P_tur_min_values'] = df.loc[df['Python Variable Names'] == 'P_tur_min_values', 'Single input'].values[0]
+# input_data['P_tur_max_values'] = df.loc[df['Python Variable Names'] == 'P_tur_max_values', 'Single input'].values[0]
+
+
+# Hourly values
+hours = [f'H{i:02}' for i in range(1, 25)]
+
+for var in ['Q_bp_min_values', 'Q_bp_max_values', 'Q_tur_min_values', 'Q_tur_max_values', 'Q_tot_min_values', 'Q_tot_max_values',
+            'T_bp_values', 'T_tur_values', 'T_RM61_hourly_max_values', 'T_RM61_hourly_min_values', 'dT_hourly_values',
+            'LMP_values', 'Demand_values', 'P_tur_min_values', 'P_tur_max_values']:
+    input_data[var] = df.loc[df['Python Variable Names'] == var, hours].values.flatten().tolist()
+
+# Penalty costs
+for var in ['C_bp_ramp_up', 'C_bp_ramp_down', 'C_tur_ramp_up', 'C_tur_ramp_down', 'C_tot_ramp_up', 'C_tot_ramp_down']:
+    input_data[var] = df.loc[df['Python Variable Names'] == var, 'Single input'].values[0]
+
+
 # Sets
 time = ["t{:02}".format(i) for i in range(1, 25)]
 units = ["UnitA"]
 plants = ["PlantA"]
 
-input_data = {}
-# Parameters
-input_data['LMP_values'] = [46.85, 45.06, 43.83, 42.55, 42.62, 46.61, 76.48, 77.49, 73.64, 68.51, 67.62, 69.34, 69.23, 74.68, 86.84, 97.79, 91.29, 99.07, 103.56, 108.67, 98.73, 91.91, 53.34, 48.72]
-input_data['T_RM61_hourly_max_values'] = [15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 18, 18, 18, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5]
-input_data['T_RM61_hourly_min_values'] = [14 for i in range (1, 25)] # °C
-input_data['dT_hourly_values'] = [1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5]
-input_data['T_ramp_up_delta'] = 0 # °C
-input_data['T_ramp_down_delta'] = 0 # °C
-input_data['T_RM61_daily'] = 15.5 # °C
-input_data['dT_daily'] = 1.5 # °C
-input_data['T_bp_values'] = [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5] # °C
-input_data['T_tur_values'] = [15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5] # °C
-input_data['Demand_values'] = [1000 for i in range (1, 25)] # MW
-input_data['Q_tot_daily'] = 235003 # CFS
-input_data['Q_max_daily_change'] = 8000 # CFS
-input_data['WaterToPowerConversion'] = 0.0354538 # MW/CFS
-input_data['Q_bp_min_values'] = [0 for i in range (1, 25)] # CFS
-input_data['Q_bp_max_values'] = [15000 for i in range (1, 25)] # CFS
-input_data['Q_tur_min_values'] = [2400 for i in range (1, 25)] # CFS
-input_data['Q_tur_max_values'] = [25000 for i in range (1, 25)] # CFS
-input_data['Q_tot_min_values'] = [7000 for i in range (1, 25)] # CFS
-input_data['Q_tot_max_values'] = [12100 for i in range (1, 25)] # CFS
-input_data['Q_bp_ramp_down_max'] = 15000
-input_data['Q_bp_ramp_up_max'] = 15000
-input_data['Q_tur_ramp_down_max'] = 4000
-input_data['Q_tur_ramp_up_max'] = 25000
-input_data['Q_tot_ramp_up_max'] = 4000 # CFS/h
-input_data['Q_tot_ramp_down_max'] = 2500 # CFS/h
-input_data['C_bp_ramp_up'] = 1
-input_data['C_bp_ramp_down'] = 1
-input_data['C_tur_ramp_up'] = 1
-input_data['C_tur_ramp_down'] = 1
-input_data['C_tot_ramp_up'] = 1
-input_data['C_tot_ramp_down'] = 1
-input_data['P_tur_max_values'] = [1000 for i in range (1, 25)] # CFS
-input_data['P_tur_min_values'] = [0 for i in range (1, 25)] # CFS
+# input_data = {}
+# # Parameters
+# input_data['LMP_values'] = [46.85, 45.06, 43.83, 42.55, 42.62, 46.61, 76.48, 77.49, 73.64, 68.51, 67.62, 69.34, 69.23, 74.68, 86.84, 97.79, 91.29, 99.07, 103.56, 108.67, 98.73, 91.91, 53.34, 48.72]
+# input_data['T_RM61_hourly_max_values'] = [15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 18, 18, 18, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5]
+# input_data['T_RM61_hourly_min_values'] = [14 for i in range (1, 25)] # °C
+# input_data['dT_hourly_values'] = [1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.5]
+# input_data['T_ramp_up_delta'] = 0 # °C
+# input_data['T_ramp_down_delta'] = 0 # °C
+# input_data['T_RM61_daily'] = 15.5 # °C
+# input_data['dT_daily'] = 1.5 # °C
+# input_data['T_bp_values'] = [7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5, 7.5] # °C
+# input_data['T_tur_values'] = [15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5, 15.5] # °C
+# input_data['Demand_values'] = [1000 for i in range (1, 25)] # MW
+# input_data['Q_tot_daily'] = 235003 # CFS
+# input_data['Q_max_daily_change'] = 8000 # CFS
+# input_data['WaterToPowerConversion'] = 0.0354538 # MW/CFS
+# input_data['Q_bp_min_values'] = [0 for i in range (1, 25)] # CFS
+# input_data['Q_bp_max_values'] = [15000 for i in range (1, 25)] # CFS
+# input_data['Q_tur_min_values'] = [2400 for i in range (1, 25)] # CFS
+# input_data['Q_tur_max_values'] = [25000 for i in range (1, 25)] # CFS
+# input_data['Q_tot_min_values'] = [7000 for i in range (1, 25)] # CFS
+# input_data['Q_tot_max_values'] = [12100 for i in range (1, 25)] # CFS
+# input_data['Q_bp_ramp_down_max'] = 15000
+# input_data['Q_bp_ramp_up_max'] = 15000
+# input_data['Q_tur_ramp_down_max'] = 4000
+# input_data['Q_tur_ramp_up_max'] = 25000
+# input_data['Q_tot_ramp_up_max'] = 4000 # CFS/h
+# input_data['Q_tot_ramp_down_max'] = 2500 # CFS/h
+# input_data['C_bp_ramp_up'] = 1
+# input_data['C_bp_ramp_down'] = 1
+# input_data['C_tur_ramp_up'] = 1
+# input_data['C_tur_ramp_down'] = 1
+# input_data['C_tot_ramp_up'] = 1
+# input_data['C_tot_ramp_down'] = 1
+# input_data['P_tur_max_values'] = [1000 for i in range (1, 25)] # CFS
+# input_data['P_tur_min_values'] = [0 for i in range (1, 25)] # CFS
 
 # maximum release within 24h cant be more than X
 # daily total change 8000 CFS 8000 <= qtot_t - qtot_t+dt <=8000 (for all hours)
@@ -132,6 +176,15 @@ constraint_id_time.append(f'')
 constraints.append(
     solver.Add(sum(variables['q_bp'][t, u] * parameters['T_bp'][t, u] + variables['q_tur'][t, u] * parameters['T_tur'][t, u] for u in units for t in time) <=
                (input_data['T_RM61_daily'] - input_data['dT_daily']) * sum(variables['q_tot'][t, u] for u in units for t in time)))
+    # solver.Add(sum(variables['q_bp'][t, u] * parameters['T_bp'][t, u] + variables['q_tur'][t, u] * parameters['T_tur'][t, u] for u in units for t in time) <=
+    #            sum((input_data['T_RM61_daily'] - parameters['dT_hourly'][t]) * variables['q_tot'][t, u] for u in units for t in time)))
+
+
+constraint_id_main.append(f'Temperature t01 = t24')
+constraint_id_unit.append(f'')
+constraint_id_time.append(f'')
+constraints.append(solver.Add(sum(variables['q_bp'][time[0], u] * parameters['T_bp'][time[0], u] + variables['q_tur'][time[0], u] * parameters['T_tur'][time[0], u] for u in units) ==
+                              sum(variables['q_bp'][time[-1], u] * parameters['T_bp'][time[-1], u] + variables['q_tur'][time[-1], u] * parameters['T_tur'][time[-1], u] for u in units)))
 
 for t in time:
     # Add constraints for maximum total daily ramping rate 8000CFS
