@@ -673,9 +673,6 @@ def build_and_run(inputs):
         # Create the simulation folder inside the "results" folder
         simulation_folder_path = os.path.join(results_folder_path, inputs['sim_folder'])
 
-        plot_temperature_analysis(df_dispatch, results['Temperature_summary'], df_lmp, save_fig=True,
-                                  fig_name=simulation_folder_path + '\\plot')
-
         # Check if the folder already exists
         if os.path.exists(simulation_folder_path):
             logger.warning("The old simulation will be overwritten.")
@@ -703,6 +700,9 @@ def build_and_run(inputs):
         except Exception as e:
             logger.error(f"Failed to write results to file '{results_file_path}'. Error: {e}")
             sys.exit(1)
+
+        plot_temperature_analysis(df_dispatch, results['Temperature_summary'], df_lmp, save_fig=True,
+                                  fig_name=simulation_folder_path + '\\plot')
 
     else:
         logger.error('The problem does not have an optimal solution.')

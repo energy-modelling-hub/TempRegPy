@@ -1,12 +1,10 @@
-"""The Stigler diet problem.
-
-A description of the problem can be found here:
-https://en.wikipedia.org/wiki/Stigler_diet.
 """
-from tempregpy import *
+The TempRegPy module
+"""
+import tempregpy as trp
 import pandas as pd
 
 # Load the Excel file
-file_path = './TempRegPy.xlsx'
-config = load_config(file_path)
-inputs, results = build_and_run(config)
+file_path = 'C:\\Users\\mpavicevic\\Desktop\\test\\TempRegPy.xlsx'
+config = trp.load_config(file_path)
+inputs, results = trp.build_and_run(config)
