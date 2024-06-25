@@ -4,6 +4,8 @@ import matplotlib.gridspec as gridspec
 from scipy.spatial import ConvexHull
 import pandas as pd
 from tempregpy.logging_config import *
+import sys
+import os
 
 
 class HullComputation:
@@ -163,3 +165,73 @@ def export_dual_values(constraints, constraint_id_main, constraint_id_unit, cons
         'Dual Value': [constraint.dual_value() for constraint in constraints]
     })
     return dual_values
+
+
+def load_config(file_path):
+    full_path = os.path.abspath(file_path)
+
+    # Log the file name and full path
+    logger.info(f'Reading Excel file: {os.path.basename(file_path)}')
+    logger.info(f'Full path: {full_path}')
+
+    try:
+        # Load the Excel file
+        excel_data = pd.ExcelFile(file_path)
+        logger.info('File has been successfully read.')
+        # Parse the relevant sheet
+        try:
+            config = excel_data.parse('Inputs')
+            logger.info('Inputs have been succesfully parsed')
+
+            # Initialize the input_data dictionary
+            inputs = {}
+            inputs['file_path'] = file_path
+            inputs['sim_folder'] = config.loc[config['Python Variable Names'] == 'sim_folder', 'Single input'].values[0]
+            inputs['cnstr_bp_ramp'] = config.loc[config['Python Variable Names'] == 'cnstr_bp_ramp', 'Single input'].values[
+                0]
+            inputs['cnstr_tur_ramp'] = config.loc[config['Python Variable Names'] == 'cnstr_tur_ramp', 'Single input'].values[0]
+            inputs['cnstr_tot_ramp'] = config.loc[config['Python Variable Names'] == 'cnstr_tot_ramp', 'Single input'].values[0]
+            inputs['cnstr_temp_t01t24'] = config.loc[config['Python Variable Names'] == 'cnstr_temp_t01t24', 'Single input'].values[0]
+            inputs['cnstr_bp_t01t24'] = config.loc[config['Python Variable Names'] == 'cnstr_bp_t01t24', 'Single input'].values[0]
+            inputs['cnstr_tur_t01t24'] = config.loc[config['Python Variable Names'] == 'cnstr_tur_t01t24', 'Single input'].values[0]
+            inputs['cnstr_tot_t01t24'] = config.loc[config['Python Variable Names'] == 'cnstr_tot_t01t24', 'Single input'].values[0]
+            inputs['cnstr_oper_range'] = config.loc[config['Python Variable Names'] == 'cnstr_oper_range', 'Single input'].values[0]
+            inputs['cnstr_temp_convex_hull'] = config.loc[config['Python Variable Names'] == 'cnstr_temp_convex_hull', 'Single input'].values[0]
+            # Populate the input_data dictionary
+            inputs['Q_tot_daily'] = config.loc[config['Python Variable Names'] == 'Q_tot_daily', 'Single input'].values[0]
+            inputs['Q_max_daily_change'] = config.loc[config['Python Variable Names'] == 'Q_max_daily_change', 'Single input'].values[0]
+            inputs['Q_bp_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_bp_ramp_down_max', 'Single input'].values[0]
+            inputs['Q_bp_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_bp_ramp_up_max', 'Single input'].values[0]
+            inputs['Q_tur_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_tur_ramp_down_max', 'Single input'].values[0]
+            inputs['Q_tur_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_tur_ramp_up_max', 'Single input'].values[0]
+            inputs['Q_tot_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_tot_ramp_up_max', 'Single input'].values[0]
+            inputs['Q_tot_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_tot_ramp_down_max', 'Single input'].values[0]
+            inputs['T_ramp_up_delta'] = config.loc[config['Python Variable Names'] == 'T_ramp_up_delta', 'Single input'].values[0]
+            inputs['T_ramp_down_delta'] = config.loc[config['Python Variable Names'] == 'T_ramp_down_delta', 'Single input'].values[0]
+            inputs['T_RM61_daily'] = config.loc[config['Python Variable Names'] == 'T_RM61_daily', 'Single input'].values[0]
+            inputs['dT_daily'] = config.loc[config['Python Variable Names'] == 'dT_daily', 'Single input'].values[0]
+            inputs['WaterToPowerConversion'] = config.loc[config['Python Variable Names'] == 'WaterToPowerConversion', 'Single input'].values[0]
+
+            # Hourly values
+            hours = [f'H{i:02}' for i in range(1, 25)]
+
+            for var in ['Q_bp_min_values', 'Q_bp_max_values', 'Q_tur_min_values', 'Q_tur_max_values',
+                        'Q_tot_min_values',
+                        'Q_tot_max_values',
+                        'T_bp_values', 'T_tur_values', 'T_RM61_hourly_max_values', 'T_RM61_hourly_min_values',
+                        'dT_hourly_values',
+                        'LMP_values', 'Demand_values', 'P_tur_min_values', 'P_tur_max_values']:
+                inputs[var] = config.loc[config['Python Variable Names'] == var, hours].values.flatten().tolist()
+
+            # Penalty costs
+            for var in ['C_bp_ramp_up', 'C_bp_ramp_down', 'C_tur_ramp_up', 'C_tur_ramp_down', 'C_tot_ramp_up',
+                        'C_tot_ramp_down']:
+                inputs[var] = config.loc[config['Python Variable Names'] == var, 'Single input'].values[0]
+
+            return inputs
+        except Exception as e:
+            logger.error(f'Not able to parse Inputs. Error: {e}')
+            sys.exit(1)
+    except Exception as e:
+        logger.error(f'Failed to read the file. Error: {e}')
+        sys.exit(1)
