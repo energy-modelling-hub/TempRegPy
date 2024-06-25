@@ -2,6 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from scipy.spatial import ConvexHull
+import pandas as pd
+from tempregpy.logging_config import *
 
 
 class HullComputation:
@@ -38,9 +40,9 @@ class HullComputation:
 
     def print_plane_equations(self):
         label = self.label
-        print(f"Plane Equations for {label}:")
+        logger.info(f"Plane Equations for {label}:")
         for i, ((a, b, c, d), sign) in enumerate(zip(self.plane_equations, self.inequality_signs)):
-            print(f"Plane {i}: {a:.3f}x + {b:.3f}y + {c:.3f}z {sign} {d:.3f}")
+            logger.info(f"Plane {i}: {a:.3f}x + {b:.3f}y + {c:.3f}z {sign} {d:.3f}")
 
 
 class DataGenerator:
@@ -95,8 +97,8 @@ class Plotter:
         self.plot_surface(ax2, self.data_gen.Q_tot_mesh, self.data_gen.Q_tot1_mesh, self.data_gen.Z_mesh, '$Q_{tot,t}$', '$Q_{tot,t-1}$', '$Q_{tot,t} \\cdot Q_{tot,t-1}$', 'Surface plot for $Z$')
 
         plt.tight_layout()
-        plt.savefig('Qbp-Qtur-T.png', dpi=300, bbox_inches='tight')
-        plt.show()
+        # plt.savefig('Qbp-Qtur-T.png', dpi=300, bbox_inches='tight')
+        # plt.show()
 
     def plot_scatter_and_hull(self, ax, points, hull, xlabel, ylabel, zlabel, title):
         ax.scatter(points[:, 0], points[:, 1], points[:, 2], c='b', marker='o', label='Data points')
@@ -118,25 +120,46 @@ class Plotter:
         ax.invert_xaxis()
 
 
-# # def main():
-# Q_bp_min_values = 0
-# Q_bp_max_values = 15000
-# Q_tur_min_values = 2400
-# Q_tur_max_values = 25000
-# Q_tot_min_values = 7000
-# Q_tot_max_values = 12100
-#
-# data_gen = DataGenerator(Q_tur_min_values, Q_tur_max_values, Q_bp_min_values, Q_bp_max_values, Q_tot_min_values, Q_tot_max_values)
-# hull_X = HullComputation(data_gen.points_X)
-# hull_Y = HullComputation(data_gen.points_Y)
-# hull_Z = HullComputation(data_gen.points_Z)
-#
-# hull_X.print_plane_equations("X = Q_bp * Q_tur1")
-# hull_Y.print_plane_equations("Y = Q_tur * Q_bp1")
-# hull_Z.print_plane_equations("Z = Q_tot * Q_tot1")
-#
-# Plotter(data_gen, hull_X, hull_Y, hull_Z)
+def process_double_index(variable, idx1, idx2, input=False):
+    if input is False:
+        data = {(t, u): variable[t, u].solution_value() for t in idx1 for u in idx2}
+    else:
+        data = {(t, u): variable[t, u] for t in idx1 for u in idx2}
+    # Extract unit names and column names
+    unit_names = sorted(set(unit for (_, unit) in data.keys()))
+    column_names = sorted(set(column for (column, _) in data.keys()))
 
+    # Convert dictionary to DataFrame
+    df = pd.DataFrame(data.values(), index=pd.MultiIndex.from_tuples(data.keys()), columns=['Values'])
 
-# if __name__ == "__main__":
-#     main()
+    # Reshape DataFrame to desired format
+    df = df.unstack().squeeze().to_frame().T
+
+    # Set index and columns
+    df.index = unit_names
+    df.columns = column_names
+    return df
+
+def process_single_index(variable, idx, input=False, col_name=''):
+    if input is False:
+        data = {(t): variable[t].solution_value() for t in idx}
+    else:
+        data = {(t): variable[t] for t in idx}
+    # Extract unit names and column names
+    index_names = sorted(set(column for (column) in data.keys()))
+
+    # Convert dictionary to DataFrame
+    df = pd.DataFrame(data.values(), columns=[col_name])
+
+    # Set index and columns
+    df.index = index_names
+    return df
+
+def export_dual_values(constraints, constraint_id_main, constraint_id_unit, constraint_id_time):
+    dual_values = pd.DataFrame({
+        'Constraint Name': constraint_id_main,
+        'Constraint idx1': constraint_id_unit,
+        'Constraint idx2': constraint_id_time,
+        'Dual Value': [constraint.dual_value() for constraint in constraints]
+    })
+    return dual_values

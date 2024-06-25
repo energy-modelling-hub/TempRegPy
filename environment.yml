@@ -7,5 +7,6 @@ dependencies:
   - matplotlib
   - openpyxl
   - scipy
+  - colorlog
   - pip:
     - ortools
