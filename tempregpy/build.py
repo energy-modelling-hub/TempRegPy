@@ -25,7 +25,8 @@ def build_and_run(inputs):
         hulls['hull_Y'].print_plane_equations()
         hulls['hull_Z'].print_plane_equations()
 
-        Plotter(data_gen, hulls['hull_X'], hulls['hull_Y'], hulls['hull_Z'])
+        if inputs['plt_show'] is True:
+            Plotter(data_gen, hulls['hull_X'], hulls['hull_Y'], hulls['hull_Z'])
 
     ### Assign parameters
     parameters = {}
@@ -701,8 +702,9 @@ def build_and_run(inputs):
             logger.error(f"Failed to write results to file '{results_file_path}'. Error: {e}")
             sys.exit(1)
 
-        plot_temperature_analysis(df_dispatch, results['Temperature_summary'], df_lmp, save_fig=True,
-                                  fig_name=simulation_folder_path + '\\plot')
+        if inputs['plt_show'] is True:
+            plot_temperature_analysis(df_dispatch, results['Temperature_summary'], df_lmp, save_fig=True,
+                                      fig_name=simulation_folder_path + '\\plot')
 
     else:
         logger.error('The problem does not have an optimal solution.')

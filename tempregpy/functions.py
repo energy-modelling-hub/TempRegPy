@@ -187,6 +187,7 @@ def load_config(file_path):
             inputs = {}
             inputs['file_path'] = file_path
             inputs['sim_folder'] = config.loc[config['Python Variable Names'] == 'sim_folder', 'Single input'].values[0]
+            inputs['plt_show'] = config.loc[config['Python Variable Names'] == 'plt_show', 'Single input'].values[0]
             inputs['cnstr_bp_ramp'] = config.loc[config['Python Variable Names'] == 'cnstr_bp_ramp', 'Single input'].values[
                 0]
             inputs['cnstr_tur_ramp'] = config.loc[config['Python Variable Names'] == 'cnstr_tur_ramp', 'Single input'].values[0]
