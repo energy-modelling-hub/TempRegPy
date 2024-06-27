@@ -29,6 +29,8 @@ def build_and_run(inputs):
             Plotter(data_gen, hulls['hull_X'], hulls['hull_Y'], hulls['hull_Z'])
 
     ### Assign parameters
+    # Example of logging parameter assignment with summarization
+    logger.info('Assigning parameters for optimization:')
     parameters = {}
     parameters['LMP'] = {(t): inputs['LMP_values'][i] for i, t in enumerate(time)}
     parameters['T_RM61_hourly_max'] = {(t): inputs['T_RM61_hourly_max_values'][i] for i, t in enumerate(time)}
@@ -46,8 +48,36 @@ def build_and_run(inputs):
     parameters['Q_tot_max'] = {t: inputs['Q_tot_max_values'][i] for i, t in enumerate(time)}
     parameters['Demand'] = {(t): inputs['Demand_values'][i] for i, t in enumerate(time)}
 
+    def log_sample_summary(logger, name, parameter_dict, sample_size=5):
+        logger.debug(f"{name} assigned (sample): {list(parameter_dict.values())[:sample_size]} ... (total: {len(parameter_dict)})")
+
+    # Log summary of LMP values
+    log_sample_summary(logger, "LMP values", parameters['LMP'])
+
+    # Log summary of temperature and demand parameters
+    log_sample_summary(logger, "T_RM61_hourly_max values", parameters['T_RM61_hourly_max'])
+    log_sample_summary(logger, "T_RM61_hourly_min values", parameters['T_RM61_hourly_min'])
+    log_sample_summary(logger, "dT_hourly values", parameters['dT_hourly'])
+    log_sample_summary(logger, "Demand values", parameters['Demand'])
+
+    # Log total counts for other parameters
+    log_sample_summary(logger, "T_bp", parameters['T_bp'])
+    log_sample_summary(logger, "T_tur", parameters['T_tur'])
+    log_sample_summary(logger, "Q_bp_min", parameters['Q_bp_min'])
+    log_sample_summary(logger, "Q_bp_max", parameters['Q_bp_max'])
+    log_sample_summary(logger, "Q_tur_min", parameters['Q_tur_min'])
+    log_sample_summary(logger, "Q_tur_max", parameters['Q_tur_max'])
+    log_sample_summary(logger, "P_tur_min", parameters['P_tur_min'])
+    log_sample_summary(logger, "P_tur_max", parameters['P_tur_max'])
+    log_sample_summary(logger, "Q_tot_min", parameters['Q_tot_min'])
+    log_sample_summary(logger, "Q_tot_max", parameters['Q_tot_max'])
+
     # Create solver
-    solver = pywraplp.Solver.CreateSolver('GLOP')
+    solver_name = 'GLOP'  # Example solver name
+    solver = pywraplp.Solver.CreateSolver(solver_name)
+
+    # Log solver information
+    logger.info(f"Created optimization solver '{solver_name}'.")
 
     variables = {}
     # Variables
@@ -94,6 +124,12 @@ def build_and_run(inputs):
         (t, u): solver.NumVar(parameters['P_tur_min'][t, u], parameters['P_tur_max'][t, u], 'p_tur[%s,%s]' % (t, u)) for
         t in time for u in units}
 
+    logger.info(f"Optimization variables sucesfully created.")
+    # # Logging variable creation
+    # for var_type, var_dict in variables.items():
+    #     for key, var in var_dict.items():
+    #         logger.info(f"Created variable '{var.name()}' with range [{var.lb()}, {var.ub()}] for {var_type}.")
+
     # Constraints
     constraints = []
     constraint_id_main = []
@@ -127,9 +163,10 @@ def build_and_run(inputs):
                    (inputs['T_RM61_daily'] - inputs['dT_daily']) * sum(
             variables['q_tot'][t, u] for u in units for t in time)))
 
-    if inputs['cnstr_temp_t01t24'] is True:
-        logger.warning(
-            'Temperature for H01 == H24 constraints included in the optimization, might be in conflict with turbine, bypass and total release at H01 == H24')
+    if inputs['cnstr_temp_t01t24']:
+        logger.info('Temperature constraints at H01 == H24 have been included in the optimization.')
+        if (inputs['cnstr_tur_t01t24'] or inputs['cnstr_bp_t01t24'] or inputs['cnstr_tot_t01t24']):
+            logger.warning('Temperature constraints at H01 == H24 may conflict with cyclic turbine, bypass, or total release constraints.')
         constraint_id_main.append(f'Temperature t01 = t24')
         constraint_id_unit.append(f'')
         constraint_id_time.append(f'')
@@ -144,27 +181,31 @@ def build_and_run(inputs):
                                                       parameters['dT_hourly'][time[-1]]) * variables['q_tot'][
                                               time[-1], u] for u in units)))
 
-    if inputs['cnstr_bp_t01t24'] is True:
-        logger.warning(
-            'Bypass release for H01 == H24 constraints included in the optimization, might be in conflict with temperature at H01 == H24')
+    if inputs['cnstr_bp_t01t24']:
+        logger.info('Bypass release cyclic constraints (H01=H24) have been included in the optimization.')
+        if inputs['cnstr_temp_t01t24']:
+            logger.warning('Bypass release cyclic constraints (H01=H24) may conflict with cyclic temperature constraints.')
+
         constraint_id_main.append(f'q_bp t01 = t24')
         constraint_id_unit.append(f'')
         constraint_id_time.append(f'')
         constraints.append(solver.Add(
             sum(variables['q_bp'][time[0], u] for u in units) == sum(variables['q_bp'][time[-1], u] for u in units)))
 
-    if inputs['cnstr_tur_t01t24'] is True:
-        logger.warning(
-            'Turbine release for H01 == H24 constraints included in the optimization, might be in conflict with temperature at H01 == H24')
+    if inputs['cnstr_tur_t01t24']:
+        logger.info('Turbine release cyclic constraints (H01=H24) have been included in the optimization.')
+        if inputs['cnstr_temp_t01t24']:
+            logger.warning('Turbine release cyclic constraints (H01=H24) may conflict with cyclic temperature constraints.')
         constraint_id_main.append(f'q_tur t01 = t24')
         constraint_id_unit.append(f'')
         constraint_id_time.append(f'')
         constraints.append(solver.Add(
             sum(variables['q_tur'][time[0], u] for u in units) == sum(variables['q_tur'][time[-1], u] for u in units)))
 
-    if inputs['cnstr_tot_t01t24'] is True:
-        logger.warning(
-            'Total release for H01 == H24 constraints included in the optimization, might be in conflict with temperature at H01 == H24')
+    if inputs['cnstr_tot_t01t24']:
+        logger.info('Total release cyclic constraints (H01=H24) have been included in the optimization.')
+        if inputs['cnstr_temp_t01t24']:
+            logger.warning('Total release cyclic constraints (H01=H24) may conflict with cyclic temperature constraints.')
         constraint_id_main.append(f'q_tot t01 = t24')
         constraint_id_unit.append(f'')
         constraint_id_time.append(f'')
@@ -172,7 +213,7 @@ def build_and_run(inputs):
             sum(variables['q_tot'][time[0], u] for u in units) == sum(variables['q_tot'][time[-1], u] for u in units)))
 
     if inputs['cnstr_oper_range'] is True:
-        logger.info('Maximum daily operating range constraints included in the optimization')
+        logger.info('Maximum daily operating range constraints have been included in the optimization.')
         for t in time:
             # Add constraints for maximum total daily ramping rate 8000CFS
             constraint_id_main.append(f'Maximum daily operating range - min')
@@ -188,7 +229,7 @@ def build_and_run(inputs):
             constraint_id_unit.append(f'')
             constraint_id_time.append(f'{t}')
             constraints.append(
-                solver.Add(sum(variables['q_tot_min'][u] for u in units) + 8000 >= sum(
+                solver.Add(sum(variables['q_tot_min'][u] for u in units) + inputs['Q_max_daily_change'] >= sum(
                     variables['q_tot'][t, u] for u in units)))
 
     # Add constraints for maximum hourly temperature
@@ -230,7 +271,7 @@ def build_and_run(inputs):
         constraints.append(solver.Add(parameters['Demand'][t] - sum(variables['p_tur'][t, u] for u in units) >= 0))
 
     if inputs['cnstr_bp_ramp'] is True:
-        logger.info('Bypass release ramping constraints included in the optimization')
+        logger.info('Bypass release ramping constraints have been included in the optimization.')
         # Add constraint for bypass ramping up rate
         for u in units:
             for i in range(len(time)):
@@ -268,7 +309,7 @@ def build_and_run(inputs):
                         variables['q_bp'][prev_t, u] - variables['q_bp'][t, u] <= variables['q_bp_ramp_down'][t, u]))
 
     if inputs['cnstr_tur_ramp'] is True:
-        logger.info('Turbine release ramping constraints included in the optimization')
+        logger.info('Turbine release ramping constraints have been included in the optimization.')
         # Add constraint for turbine ramping up rate
         for u in units:
             for i in range(len(time)):
@@ -305,7 +346,7 @@ def build_and_run(inputs):
                         variables['q_tur'][prev_t, u] - variables['q_tur'][t, u] <= variables['q_tur_ramp_down'][t, u]))
 
     if inputs['cnstr_tot_ramp']:
-        logger.info('Total release ramping constraints included in the optimization')
+        logger.info('Total release ramping constraints have been included in the optimization.')
         # Add constraint for total ramping up constraint
         for u in units:
             for i in range(len(time)):
@@ -342,7 +383,7 @@ def build_and_run(inputs):
     #####################################################################
     ##### Hull surface area constraints
     if inputs['cnstr_temp_convex_hull'] is True:
-        logger.info('Convex hull temperature ramping approximation constraints included in the optimization')
+        logger.info('Convex hull temperature ramping approximation constraints have been included in the optimization.')
         for u in units:
             for t in time:
                 constraint_id_main.append(f'Temperature ramp up constraint')
@@ -591,131 +632,151 @@ def build_and_run(inputs):
     # Solve the problem
     status = solver.Solve()
 
-    # Check if the problem has an optimal solution
+    # Log solver status
     if status == pywraplp.Solver.OPTIMAL:
-        logger.info('Objective value = ' + str(objective.Value()))
-        results = {}
-        results['Objective Value'] = objective.Value()
-        results['q_tot_min'] = process_single_index(variables['q_tot_min'], units)
-        results['q_tur'] = process_double_index(variables['q_tur'], time, units)
-        results['q_bp'] = process_double_index(variables['q_bp'], time, units)
-        results['q_tot'] = process_double_index(variables['q_tot'], time, units)
-        results['p_tur'] = process_double_index(variables['p_tur'], time, units)
-        results['q_bp_t_tur_t1'] = process_double_index(variables['q_bp_t_tur_t1'], time, units)
-        results['q_tur_t_bp_t1'] = process_double_index(variables['q_tur_t_bp_t1'], time, units)
-        results['q_tot_t_tot_t1'] = process_double_index(variables['q_tot_t_tot_t1'], time, units)
-        results['q_bp_ramp_up'] = process_double_index(variables['q_bp_ramp_up'], time, units)
-        results['q_bp_ramp_down'] = process_double_index(variables['q_bp_ramp_down'], time, units)
-        results['q_tur_ramp_up'] = process_double_index(variables['q_tur_ramp_up'], time, units)
-        results['q_tur_ramp_down'] = process_double_index(variables['q_tur_ramp_down'], time, units)
-        results['q_tot_ramp_up'] = process_double_index(variables['q_tot_ramp_up'], time, units)
-        results['q_tot_ramp_down'] = process_double_index(variables['q_tot_ramp_down'], time, units)
-        results['T_dam'] = (results['q_tur'] * process_double_index(parameters['T_tur'], time, units, input=True) +
-                            results['q_bp'] * process_double_index(parameters['T_bp'], time, units, input=True)) / \
-                           results['q_tot']
-        results['T_RM61'] = results['T_dam'].T + process_single_index(parameters['dT_hourly'], time, input=True,
-                                                                      col_name='UnitA')
-        results['T_RM61'].columns = ['T_RM61']
-        results['Dual Values'] = export_dual_values(constraints, constraint_id_main, constraint_id_unit,
-                                                    constraint_id_time)
-        results['T_dam'] = results['T_dam'].T
-        results['T_dam'].columns = ['T_dam']
+        logger.info("Optimization successful: Found optimal solution.")
+    elif status == pywraplp.Solver.FEASIBLE:
+        logger.info("Optimization terminated: Found feasible solution.")
+    elif status == pywraplp.Solver.INFEASIBLE:
+        logger.warning("Optimization terminated: Problem is infeasible.")
+    elif status == pywraplp.Solver.NOT_SOLVED:
+        logger.warning("Optimization not solved: No solution found.")
+    else:
+        logger.error("Optimization failed: Solver encountered an error.")
 
-        def concat_and_rename(results, q_tur_value, q_bp_value, unit_name='UnitA'):
-            # Selecting desired rows from each dataframe
-            q_tur_selected = results[q_tur_value].loc[unit_name, :]
-            q_bp_selected = results[q_bp_value].loc[unit_name, :]
+    # Check if the problem has an optimal solution
+    try:
+        if status == pywraplp.Solver.OPTIMAL:
+            logger.info('Objective value = ' + str(objective.Value()))
+            results = {}
+            results['Objective Value'] = objective.Value()
+            results['q_tot_min'] = process_single_index(variables['q_tot_min'], units)
+            results['q_tur'] = process_double_index(variables['q_tur'], time, units)
+            results['q_bp'] = process_double_index(variables['q_bp'], time, units)
+            results['q_tot'] = process_double_index(variables['q_tot'], time, units)
+            results['p_tur'] = process_double_index(variables['p_tur'], time, units)
+            results['q_bp_t_tur_t1'] = process_double_index(variables['q_bp_t_tur_t1'], time, units)
+            results['q_tur_t_bp_t1'] = process_double_index(variables['q_tur_t_bp_t1'], time, units)
+            results['q_tot_t_tot_t1'] = process_double_index(variables['q_tot_t_tot_t1'], time, units)
+            results['q_bp_ramp_up'] = process_double_index(variables['q_bp_ramp_up'], time, units)
+            results['q_bp_ramp_down'] = process_double_index(variables['q_bp_ramp_down'], time, units)
+            results['q_tur_ramp_up'] = process_double_index(variables['q_tur_ramp_up'], time, units)
+            results['q_tur_ramp_down'] = process_double_index(variables['q_tur_ramp_down'], time, units)
+            results['q_tot_ramp_up'] = process_double_index(variables['q_tot_ramp_up'], time, units)
+            results['q_tot_ramp_down'] = process_double_index(variables['q_tot_ramp_down'], time, units)
+            results['T_dam'] = (results['q_tur'] * process_double_index(parameters['T_tur'], time, units, input=True) +
+                                results['q_bp'] * process_double_index(parameters['T_bp'], time, units, input=True)) / \
+                               results['q_tot']
+            results['T_RM61'] = results['T_dam'].T + process_single_index(parameters['dT_hourly'], time, input=True,
+                                                                          col_name='UnitA')
+            results['T_RM61'].columns = ['T_RM61']
+            results['Dual Values'] = export_dual_values(constraints, constraint_id_main, constraint_id_unit,
+                                                        constraint_id_time)
+            results['T_dam'] = results['T_dam'].T
+            results['T_dam'].columns = ['T_dam']
 
-            # Concatenating them
-            concatenated_df = pd.concat([q_bp_selected, q_tur_selected], axis=1)
+            def concat_and_rename(results, q_tur_value, q_bp_value, unit_name='UnitA'):
+                # Selecting desired rows from each dataframe
+                q_tur_selected = results[q_tur_value].loc[unit_name, :]
+                q_bp_selected = results[q_bp_value].loc[unit_name, :]
 
-            # Assigning index names
-            concatenated_df.columns = [q_bp_value, q_tur_value]
+                # Concatenating them
+                concatenated_df = pd.concat([q_bp_selected, q_tur_selected], axis=1)
 
-            return concatenated_df
+                # Assigning index names
+                concatenated_df.columns = [q_bp_value, q_tur_value]
 
-        # Usage example
-        df_dispatch = concat_and_rename(results, 'q_tur', 'q_bp')
-        df_lmp = process_single_index(parameters['LMP'], time, input=True, col_name='LMP')
-        # Concatenate initial dataframes
-        results['Temperature_summary'] = pd.concat([
-            results['T_RM61'],
-            process_single_index(parameters['T_RM61_hourly_max'], time, input=True, col_name='T_RM61_max'),
-            process_single_index(parameters['T_RM61_hourly_min'], time, input=True, col_name='T_RM61_min')
-        ], axis=1)
+                return concatenated_df
 
-        # Calculate 'T_min' and 'T_max'
-        results['Temperature_summary']['T_min'] = (
-                results['Temperature_summary']['T_RM61'] - inputs['T_ramp_down_delta']).shift(1)
-        results['Temperature_summary'].loc['t01', 'T_min'] = \
-        (results['Temperature_summary']['T_RM61'] - inputs['T_ramp_down_delta']).iloc[-1]
+            # Usage example
+            df_dispatch = concat_and_rename(results, 'q_tur', 'q_bp')
+            df_lmp = process_single_index(parameters['LMP'], time, input=True, col_name='LMP')
+            # Concatenate initial dataframes
+            results['Temperature_summary'] = pd.concat([
+                results['T_RM61'],
+                process_single_index(parameters['T_RM61_hourly_max'], time, input=True, col_name='T_RM61_max'),
+                process_single_index(parameters['T_RM61_hourly_min'], time, input=True, col_name='T_RM61_min')
+            ], axis=1)
 
-        results['Temperature_summary']['T_max'] = (
-                results['Temperature_summary']['T_RM61'] + inputs['T_ramp_up_delta']).shift(1)
-        results['Temperature_summary'].loc['t01', 'T_max'] = \
-        (results['Temperature_summary']['T_RM61'] + inputs['T_ramp_up_delta']).iloc[-1]
+            # Calculate 'T_min' and 'T_max'
+            results['Temperature_summary']['T_min'] = (
+                    results['Temperature_summary']['T_RM61'] - inputs['T_ramp_down_delta']).shift(1)
+            results['Temperature_summary'].loc['t01', 'T_min'] = \
+            (results['Temperature_summary']['T_RM61'] - inputs['T_ramp_down_delta']).iloc[-1]
 
-        # Cap 'T_max' and 'T_min' values
-        results['Temperature_summary']['T_max'] = results['Temperature_summary'][['T_max', 'T_RM61_max']].min(axis=1)
-        results['Temperature_summary']['T_min'] = results['Temperature_summary'][['T_min', 'T_RM61_min']].max(axis=1)
+            results['Temperature_summary']['T_max'] = (
+                    results['Temperature_summary']['T_RM61'] + inputs['T_ramp_up_delta']).shift(1)
+            results['Temperature_summary'].loc['t01', 'T_max'] = \
+            (results['Temperature_summary']['T_RM61'] + inputs['T_ramp_up_delta']).iloc[-1]
 
-        # Concatenate additional results and add 'd_T' column
-        results['Temperature_summary'] = pd.concat([results['Temperature_summary'], results['T_dam']], axis=1)
-        results['Temperature_summary']['d_T'] = process_single_index(parameters['dT_hourly'], time, input=True,
-                                                                     col_name='UnitA')
+            # Cap 'T_max' and 'T_min' values
+            results['Temperature_summary']['T_max'] = results['Temperature_summary'][['T_max', 'T_RM61_max']].min(axis=1)
+            results['Temperature_summary']['T_min'] = results['Temperature_summary'][['T_min', 'T_RM61_min']].max(axis=1)
 
-        # Determine the directory where the Excel file is located
-        base_directory = os.path.dirname(inputs['file_path'])
+            # Concatenate additional results and add 'd_T' column
+            results['Temperature_summary'] = pd.concat([results['Temperature_summary'], results['T_dam']], axis=1)
+            results['Temperature_summary']['d_T'] = process_single_index(parameters['dT_hourly'], time, input=True,
+                                                                         col_name='UnitA')
 
-        # Create the "results" folder in the same directory as the Excel file
-        results_folder_path = os.path.join(base_directory, 'Results')
-        os.makedirs(results_folder_path, exist_ok=True)
+            # Determine the directory where the Excel file is located
+            base_directory = os.path.dirname(inputs['file_path'])
 
-        # Create the simulation folder inside the "results" folder
-        simulation_folder_path = os.path.join(results_folder_path, inputs['sim_folder'])
+            # Create the "results" folder in the same directory as the Excel file
+            results_folder_path = os.path.join(base_directory, 'Results')
+            os.makedirs(results_folder_path, exist_ok=True)
 
-        # Check if the folder already exists
-        if os.path.exists(simulation_folder_path):
-            logger.warning("The old simulation will be overwritten.")
-        else:
-            # Create the folder
+            # Create the simulation folder inside the "results" folder
+            simulation_folder_path = os.path.join(results_folder_path, inputs['sim_folder'])
+
+            # Check if the folder already exists
+            if os.path.exists(simulation_folder_path):
+                logger.warning("The existing simulation will be overwritten.")
+            else:
+                # Create the folder
+                try:
+                    os.makedirs(simulation_folder_path)
+                    logger.info(f"The folder '{simulation_folder_path}' was successfully created.")
+                except Exception as e:
+                    logger.error(f"Unable to create the folder '{simulation_folder_path}'. Encountered error: {e}. Please check your permissions and ensure the path is correct.")
+                    sys.exit(1)
+
+            # Export results to a file
+            results_file_path = os.path.join(simulation_folder_path, 'optimization_results.txt')
             try:
-                os.makedirs(simulation_folder_path)
-                logger.info(f"The folder '{simulation_folder_path}' has been created.")
+                with open(results_file_path, 'w') as f:
+                    logger.info(f"Writing results to '{results_file_path}'...")
+                    f.write('Results:\n')
+
+                    for key, value in results.items():
+                        if isinstance(value, pd.DataFrame):
+                            f.write(f'{key}:\n{value.to_string()}\n\n')
+                        else:
+                            f.write(f'{key}: {value}\n')
             except Exception as e:
-                logger.error(f"Failed to create folder '{simulation_folder_path}'. Error: {e}")
+                logger.error(f"Unable to write results to the file '{results_file_path}'. Error encountered: {e}. Please check file permissions and ensure the directory exists.")
                 sys.exit(1)
 
-        # Export results to a file
-        results_file_path = os.path.join(simulation_folder_path, 'optimization_results.txt')
-        try:
-            with open(results_file_path, 'w') as f:
-                logger.info(f'Writing results to: {results_file_path}')
-                f.write('Results:\n')
+            if inputs['plt_show'] is True:
+                plot_temperature_analysis(df_dispatch, results['Temperature_summary'], df_lmp, save_fig=True,
+                                          fig_name=simulation_folder_path + '\\plot')
 
-                for key, value in results.items():
-                    if isinstance(value, pd.DataFrame):
-                        f.write(f'{key}:\n{value.to_string()}\n\n')
-                    else:
-                        f.write(f'{key}: {value}\n')
-        except Exception as e:
-            logger.error(f"Failed to write results to file '{results_file_path}'. Error: {e}")
-            sys.exit(1)
-
-        if inputs['plt_show'] is True:
-            plot_temperature_analysis(df_dispatch, results['Temperature_summary'], df_lmp, save_fig=True,
-                                      fig_name=simulation_folder_path + '\\plot')
-
-    else:
-        logger.error('The problem does not have an optimal solution.')
-
-    copy_file_to_destination('TempRegPy\\app.log', simulation_folder_path)
-
-    for key, value in results.items():
-        if isinstance(value, pd.DataFrame):
-            value.to_csv(f'{simulation_folder_path + '\\'}{key}.csv', index=False)
         else:
-            with open(f'{simulation_folder_path + '\\'}{key}.csv', 'w') as f:
-                f.write(str(value))
+            logger.error('The problem does not have an optimal solution. Please review and revise the input data.')
 
-    return inputs, results
+        copy_file_to_destination('TempRegPy\\app.log', simulation_folder_path)
+
+        for key, value in results.items():
+            if isinstance(value, pd.DataFrame):
+                value.to_csv(f'{simulation_folder_path + '\\'}{key}.csv', index=False)
+            else:
+                with open(f'{simulation_folder_path + '\\'}{key}.csv', 'w') as f:
+                    f.write(str(value))
+
+        return inputs, results
+
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}. The problem does not have an optimal solution. Please review and revise the input data.")
+    finally:
+        # if 'e' in locals() or 'e' in globals():
+        #     input("Press Enter to exit...")
+        input("Press Enter to exit...")

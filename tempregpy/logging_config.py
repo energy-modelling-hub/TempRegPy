@@ -6,7 +6,7 @@ def setup_logging():
     """Set up logging with colorlog"""
     handler = colorlog.StreamHandler()
     formatter = colorlog.ColoredFormatter(
-        "%(log_color)s%(levelname)-8s%(reset)s %(blue)s%(message)s",
+        "%(log_color)s%(levelname)-8s%(reset)s %(yellow)s%(message)s",
         datefmt=None,
         reset=True,
         log_colors={
