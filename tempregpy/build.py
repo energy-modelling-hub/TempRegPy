@@ -717,6 +717,7 @@ def build_and_run(inputs):
             results['Temperature_summary'] = pd.concat([results['Temperature_summary'], results['T_dam']], axis=1)
             results['Temperature_summary']['d_T'] = process_single_index(parameters['dT_hourly'], time, input=True,
                                                                          col_name='UnitA')
+            # results['Temperature_summary'] = results['Temperature_summary'].T
 
             # Determine the directory where the Excel file is located
             base_directory = os.path.dirname(inputs['file_path'])
