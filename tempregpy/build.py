@@ -778,6 +778,6 @@ def build_and_run(inputs):
     except Exception as e:
         logger.error(f"An unexpected error occurred: {e}. The problem does not have an optimal solution. Please review and revise the input data.")
     finally:
-        # if 'e' in locals() or 'e' in globals():
-        #     input("Press Enter to exit...")
-        input("Press Enter to exit...")
+        if 'e' in locals() or 'e' in globals():
+            input("Press Enter to exit...")
+        # input("Press Enter to exit...")
