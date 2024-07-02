@@ -6,6 +6,7 @@ import pandas as pd
 from tempregpy.logging_config import *
 import sys
 import os
+from .constants import *
 
 
 class HullComputation:
@@ -21,14 +22,14 @@ class HullComputation:
         simplex_centroids = []
         centroid = np.mean(self.points, axis=0)
 
-        def normalized_plane_equation(p1, p2, p3):
-            v1 = p2 - p1
-            v2 = p3 - p1
+        def normalized_plane_equation(point1, point2, point3):
+            v1 = point2 - point1
+            v2 = point3 - point1
             normal = np.cross(v1, v2)
-            a, b, c = normal
-            d = np.dot(normal, p1)
+            coef_a, coef_b, coef_c = normal
+            coef_d = np.dot(normal, point1)
             norm = np.linalg.norm(normal)
-            return a / norm, b / norm, c / norm, d / norm
+            return coef_a / norm, coef_b / norm, coef_c / norm, coef_d / norm
 
         for simplex in hull.simplices:
             p1, p2, p3 = self.points[simplex]
@@ -61,8 +62,6 @@ class DataGenerator:
         x = np.linspace(self.Q_tur_min, self.Q_tur_max, 4, endpoint=True)
         y = np.linspace(self.Q_bp_min, self.Q_bp_max, 4, endpoint=True)
         z = np.linspace(self.Q_tot_min, self.Q_tot_max, 4, endpoint=True)
-        # Q_tur, Q_bp, Q_tur1, Q_bp1 = np.meshgrid(x, y, x, y, indexing='ij')
-        # Q_tur, Q_bp, Q_tur1, Q_bp1, Q_tot, Q_tot1 = np.meshgrid(x, y, x, y, z,z, indexing='ij')
         Q_bp, Q_tur1 = np.meshgrid(y, x, indexing='ij')
         Q_tur, Q_bp1 = np.meshgrid(x, y, indexing='ij')
         Q_tot, Q_tot1 = np.meshgrid(z, z, indexing='ij')
@@ -182,52 +181,55 @@ def load_config(file_path):
         try:
             config = excel_data.parse('Inputs')
             logger.info('Inputs have been succesfully parsed')
+            par_name = 'Python Variable Names'
+            input_type = 'Single input'
 
             # Initialize the input_data dictionary
             inputs = {}
             inputs['file_path'] = file_path
-            inputs['sim_folder'] = config.loc[config['Python Variable Names'] == 'sim_folder', 'Single input'].values[0]
-            inputs['plt_show'] = config.loc[config['Python Variable Names'] == 'plt_show', 'Single input'].values[0]
-            inputs['cnstr_bp_ramp'] = config.loc[config['Python Variable Names'] == 'cnstr_bp_ramp', 'Single input'].values[
-                0]
-            inputs['cnstr_tur_ramp'] = config.loc[config['Python Variable Names'] == 'cnstr_tur_ramp', 'Single input'].values[0]
-            inputs['cnstr_tot_ramp'] = config.loc[config['Python Variable Names'] == 'cnstr_tot_ramp', 'Single input'].values[0]
-            inputs['cnstr_temp_t01t24'] = config.loc[config['Python Variable Names'] == 'cnstr_temp_t01t24', 'Single input'].values[0]
-            inputs['cnstr_bp_t01t24'] = config.loc[config['Python Variable Names'] == 'cnstr_bp_t01t24', 'Single input'].values[0]
-            inputs['cnstr_tur_t01t24'] = config.loc[config['Python Variable Names'] == 'cnstr_tur_t01t24', 'Single input'].values[0]
-            inputs['cnstr_tot_t01t24'] = config.loc[config['Python Variable Names'] == 'cnstr_tot_t01t24', 'Single input'].values[0]
-            inputs['cnstr_oper_range'] = config.loc[config['Python Variable Names'] == 'cnstr_oper_range', 'Single input'].values[0]
-            inputs['cnstr_temp_convex_hull'] = config.loc[config['Python Variable Names'] == 'cnstr_temp_convex_hull', 'Single input'].values[0]
-            # Populate the input_data dictionary
-            inputs['Q_tot_daily'] = config.loc[config['Python Variable Names'] == 'Q_tot_daily', 'Single input'].values[0]
-            inputs['Q_max_daily_change'] = config.loc[config['Python Variable Names'] == 'Q_max_daily_change', 'Single input'].values[0]/12.1
-            inputs['Q_bp_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_bp_ramp_down_max', 'Single input'].values[0]/12.1
-            inputs['Q_bp_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_bp_ramp_up_max', 'Single input'].values[0]/12.1
-            inputs['Q_tur_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_tur_ramp_down_max', 'Single input'].values[0]/12.1
-            inputs['Q_tur_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_tur_ramp_up_max', 'Single input'].values[0]/12.1
-            inputs['Q_tot_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_tot_ramp_up_max', 'Single input'].values[0]/12.1
-            inputs['Q_tot_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_tot_ramp_down_max', 'Single input'].values[0]/12.1
-            inputs['T_ramp_up_delta'] = config.loc[config['Python Variable Names'] == 'T_ramp_up_delta', 'Single input'].values[0]
-            inputs['T_ramp_down_delta'] = config.loc[config['Python Variable Names'] == 'T_ramp_down_delta', 'Single input'].values[0]
-            inputs['T_RM61_daily'] = config.loc[config['Python Variable Names'] == 'T_RM61_daily', 'Single input'].values[0]
-            inputs['dT_daily'] = config.loc[config['Python Variable Names'] == 'dT_daily', 'Single input'].values[0]
-            inputs['WaterToPowerConversion'] = config.loc[config['Python Variable Names'] == 'WaterToPowerConversion', 'Single input'].values[0]*12.1
+
+            # Define the list of keys to extract
+            keys = [
+                'sim_folder', 'plt_show', 'cnstr_bp_ramp', 'cnstr_tur_ramp', 'cnstr_tot_ramp',
+                'cnstr_temp_t01t24', 'cnstr_bp_t01t24', 'cnstr_tur_t01t24', 'cnstr_tot_t01t24',
+                'cnstr_oper_range', 'cnstr_temp_convex_hull', 'Q_tot_daily', 'T_ramp_up_delta', 'T_ramp_down_delta',
+                'T_RM61_daily', 'dT_daily'
+            ]
+
+            # Loop through each key and extract the corresponding value
+            for key in keys:
+                inputs[key] = config.loc[config[par_name] == key, input_type].values[0]
+
+            keys_with_conversion = {
+                'Q_max_daily_change': cfs_to_af,
+                'Q_bp_ramp_down_max': cfs_to_af,
+                'Q_bp_ramp_up_max': cfs_to_af,
+                'Q_tur_ramp_down_max': cfs_to_af,
+                'Q_tur_ramp_up_max': cfs_to_af,
+                'Q_tot_ramp_up_max': cfs_to_af,
+                'Q_tot_ramp_down_max': cfs_to_af,
+                'WaterToPowerConversion': 1 / cfs_to_af
+            }
+
+            # Loop through each key and apply the corresponding conversion factor
+            for key, factor in keys_with_conversion.items():
+                inputs[key] = config.loc[config[par_name] == key, input_type].values[0] * factor
 
             # Hourly values
             hours = [f'H{i:02}' for i in range(1, 25)]
 
             for var in ['Q_bp_min_values', 'Q_bp_max_values', 'Q_tur_min_values', 'Q_tur_max_values',
                         'Q_tot_min_values', 'Q_tot_max_values']:
-                inputs[var] = (config.loc[config['Python Variable Names'] == var, hours].values/12.1).flatten().tolist()
+                inputs[var] = (config.loc[config[par_name] == var, hours].values*cfs_to_af).flatten().tolist() #CFS->AF
 
             for var in ['T_bp_values', 'T_tur_values', 'T_RM61_hourly_max_values', 'T_RM61_hourly_min_values',
                         'dT_hourly_values', 'LMP_values', 'Demand_values', 'P_tur_min_values', 'P_tur_max_values']:
-                inputs[var] = config.loc[config['Python Variable Names'] == var, hours].values.flatten().tolist()
+                inputs[var] = config.loc[config[par_name] == var, hours].values.flatten().tolist()
 
             # Penalty costs
             for var in ['C_bp_ramp_up', 'C_bp_ramp_down', 'C_tur_ramp_up', 'C_tur_ramp_down', 'C_tot_ramp_up',
                         'C_tot_ramp_down']:
-                inputs[var] = config.loc[config['Python Variable Names'] == var, 'Single input'].values[0]*12.1
+                inputs[var] = config.loc[config[par_name] == var, input_type].values[0]/cfs_to_af #CFS->AF
 
             return inputs
         except Exception as e:

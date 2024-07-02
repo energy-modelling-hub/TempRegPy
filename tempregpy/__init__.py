@@ -4,6 +4,7 @@ from .plotting import *
 from .utils import *
 from .build import *
 from ._version import *
+from .constants import *
 
 __appname__ = "TempRegPy"
 __version__ = "0.1.1"

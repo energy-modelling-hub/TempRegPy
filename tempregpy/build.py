@@ -644,26 +644,36 @@ def build_and_run(inputs):
     else:
         logger.error("Optimization failed: Solver encountered an error.")
 
+    # Determine the directory where the Excel file is located
+    base_directory = os.path.dirname(inputs['file_path'])
+
+    # Create the "results" folder in the same directory as the Excel file
+    results_folder_path = os.path.join(base_directory, 'Results')
+    os.makedirs(results_folder_path, exist_ok=True)
+
+    # Create the simulation folder inside the "results" folder
+    simulation_folder_path = os.path.join(results_folder_path, inputs['sim_folder'])
+
     # Check if the problem has an optimal solution
     try:
         if status == pywraplp.Solver.OPTIMAL:
             logger.info('Objective value = ' + str(objective.Value()))
             results = {}
             results['Objective Value'] = objective.Value()
-            results['q_tot_min'] = process_single_index(variables['q_tot_min'], units)*12.1
-            results['q_tur'] = process_double_index(variables['q_tur'], time, units)*12.1
-            results['q_bp'] = process_double_index(variables['q_bp'], time, units)*12.1
-            results['q_tot'] = process_double_index(variables['q_tot'], time, units)*12.1
-            results['p_tur'] = process_double_index(variables['p_tur'], time, units)*12.1
+            results['q_tot_min'] = process_single_index(variables['q_tot_min'], units)/cfs_to_af #CFS->AF
+            results['q_tur'] = process_double_index(variables['q_tur'], time, units)/cfs_to_af #CFS->AF
+            results['q_bp'] = process_double_index(variables['q_bp'], time, units)/cfs_to_af #CFS->AF
+            results['q_tot'] = process_double_index(variables['q_tot'], time, units)/cfs_to_af #CFS->AF
+            results['p_tur'] = process_double_index(variables['p_tur'], time, units)
             results['q_bp_t_tur_t1'] = process_double_index(variables['q_bp_t_tur_t1'], time, units)
             results['q_tur_t_bp_t1'] = process_double_index(variables['q_tur_t_bp_t1'], time, units)
             results['q_tot_t_tot_t1'] = process_double_index(variables['q_tot_t_tot_t1'], time, units)
-            results['q_bp_ramp_up'] = process_double_index(variables['q_bp_ramp_up'], time, units)*12.1
-            results['q_bp_ramp_down'] = process_double_index(variables['q_bp_ramp_down'], time, units)*12.1
-            results['q_tur_ramp_up'] = process_double_index(variables['q_tur_ramp_up'], time, units)*12.1
-            results['q_tur_ramp_down'] = process_double_index(variables['q_tur_ramp_down'], time, units)*12.1
-            results['q_tot_ramp_up'] = process_double_index(variables['q_tot_ramp_up'], time, units)*12.1
-            results['q_tot_ramp_down'] = process_double_index(variables['q_tot_ramp_down'], time, units)*12.1
+            results['q_bp_ramp_up'] = process_double_index(variables['q_bp_ramp_up'], time, units)/cfs_to_af #CFS->AF
+            results['q_bp_ramp_down'] = process_double_index(variables['q_bp_ramp_down'], time, units)/cfs_to_af #CFS->AF
+            results['q_tur_ramp_up'] = process_double_index(variables['q_tur_ramp_up'], time, units)/cfs_to_af #CFS->AF
+            results['q_tur_ramp_down'] = process_double_index(variables['q_tur_ramp_down'], time, units)/cfs_to_af #CFS->AF
+            results['q_tot_ramp_up'] = process_double_index(variables['q_tot_ramp_up'], time, units)/cfs_to_af #CFS->AF
+            results['q_tot_ramp_down'] = process_double_index(variables['q_tot_ramp_down'], time, units)/cfs_to_af #CFS->AF
             results['T_dam'] = (results['q_tur'] * process_double_index(parameters['T_tur'], time, units, input=True) +
                                 results['q_bp'] * process_double_index(parameters['T_bp'], time, units, input=True)) / \
                                results['q_tot']
@@ -717,18 +727,6 @@ def build_and_run(inputs):
             results['Temperature_summary'] = pd.concat([results['Temperature_summary'], results['T_dam']], axis=1)
             results['Temperature_summary']['d_T'] = process_single_index(parameters['dT_hourly'], time, input=True,
                                                                          col_name='UnitA')
-            # results['Temperature_summary'] = results['Temperature_summary'].T
-
-            # Determine the directory where the Excel file is located
-            base_directory = os.path.dirname(inputs['file_path'])
-
-            # Create the "results" folder in the same directory as the Excel file
-            results_folder_path = os.path.join(base_directory, 'Results')
-            os.makedirs(results_folder_path, exist_ok=True)
-
-            # Create the simulation folder inside the "results" folder
-            simulation_folder_path = os.path.join(results_folder_path, inputs['sim_folder'])
-
             # Check if the folder already exists
             if os.path.exists(simulation_folder_path):
                 logger.warning("The existing simulation will be overwritten.")
@@ -757,6 +755,13 @@ def build_and_run(inputs):
                 logger.error(f"Unable to write results to the file '{results_file_path}'. Error encountered: {e}. Please check file permissions and ensure the directory exists.")
                 sys.exit(1)
 
+            for key, value in results.items():
+                if isinstance(value, pd.DataFrame):
+                    value.to_csv(f'{simulation_folder_path + '\\'}{key}.csv', index=False)
+                else:
+                    with open(f'{simulation_folder_path + '\\'}{key}.csv', 'w') as f:
+                        f.write(str(value))
+
             if inputs['plt_show'] is True:
                 plot_temperature_analysis(df_dispatch, results['Temperature_summary'], df_lmp, save_fig=True,
                                           fig_name=simulation_folder_path + '\\plot')
@@ -765,13 +770,6 @@ def build_and_run(inputs):
             logger.error('The problem does not have an optimal solution. Please review and revise the input data.')
 
         copy_file_to_destination('TempRegPy\\app.log', simulation_folder_path)
-
-        for key, value in results.items():
-            if isinstance(value, pd.DataFrame):
-                value.to_csv(f'{simulation_folder_path + '\\'}{key}.csv', index=False)
-            else:
-                with open(f'{simulation_folder_path + '\\'}{key}.csv', 'w') as f:
-                    f.write(str(value))
 
         return inputs, results
 
