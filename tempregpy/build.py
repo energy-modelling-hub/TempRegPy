@@ -650,20 +650,20 @@ def build_and_run(inputs):
             logger.info('Objective value = ' + str(objective.Value()))
             results = {}
             results['Objective Value'] = objective.Value()
-            results['q_tot_min'] = process_single_index(variables['q_tot_min'], units)
-            results['q_tur'] = process_double_index(variables['q_tur'], time, units)
-            results['q_bp'] = process_double_index(variables['q_bp'], time, units)
-            results['q_tot'] = process_double_index(variables['q_tot'], time, units)
-            results['p_tur'] = process_double_index(variables['p_tur'], time, units)
+            results['q_tot_min'] = process_single_index(variables['q_tot_min'], units)*12.1
+            results['q_tur'] = process_double_index(variables['q_tur'], time, units)*12.1
+            results['q_bp'] = process_double_index(variables['q_bp'], time, units)*12.1
+            results['q_tot'] = process_double_index(variables['q_tot'], time, units)*12.1
+            results['p_tur'] = process_double_index(variables['p_tur'], time, units)*12.1
             results['q_bp_t_tur_t1'] = process_double_index(variables['q_bp_t_tur_t1'], time, units)
             results['q_tur_t_bp_t1'] = process_double_index(variables['q_tur_t_bp_t1'], time, units)
             results['q_tot_t_tot_t1'] = process_double_index(variables['q_tot_t_tot_t1'], time, units)
-            results['q_bp_ramp_up'] = process_double_index(variables['q_bp_ramp_up'], time, units)
-            results['q_bp_ramp_down'] = process_double_index(variables['q_bp_ramp_down'], time, units)
-            results['q_tur_ramp_up'] = process_double_index(variables['q_tur_ramp_up'], time, units)
-            results['q_tur_ramp_down'] = process_double_index(variables['q_tur_ramp_down'], time, units)
-            results['q_tot_ramp_up'] = process_double_index(variables['q_tot_ramp_up'], time, units)
-            results['q_tot_ramp_down'] = process_double_index(variables['q_tot_ramp_down'], time, units)
+            results['q_bp_ramp_up'] = process_double_index(variables['q_bp_ramp_up'], time, units)*12.1
+            results['q_bp_ramp_down'] = process_double_index(variables['q_bp_ramp_down'], time, units)*12.1
+            results['q_tur_ramp_up'] = process_double_index(variables['q_tur_ramp_up'], time, units)*12.1
+            results['q_tur_ramp_down'] = process_double_index(variables['q_tur_ramp_down'], time, units)*12.1
+            results['q_tot_ramp_up'] = process_double_index(variables['q_tot_ramp_up'], time, units)*12.1
+            results['q_tot_ramp_down'] = process_double_index(variables['q_tot_ramp_down'], time, units)*12.1
             results['T_dam'] = (results['q_tur'] * process_double_index(parameters['T_tur'], time, units, input=True) +
                                 results['q_bp'] * process_double_index(parameters['T_bp'], time, units, input=True)) / \
                                results['q_tot']

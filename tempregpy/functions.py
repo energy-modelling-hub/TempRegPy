@@ -200,34 +200,34 @@ def load_config(file_path):
             inputs['cnstr_temp_convex_hull'] = config.loc[config['Python Variable Names'] == 'cnstr_temp_convex_hull', 'Single input'].values[0]
             # Populate the input_data dictionary
             inputs['Q_tot_daily'] = config.loc[config['Python Variable Names'] == 'Q_tot_daily', 'Single input'].values[0]
-            inputs['Q_max_daily_change'] = config.loc[config['Python Variable Names'] == 'Q_max_daily_change', 'Single input'].values[0]
-            inputs['Q_bp_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_bp_ramp_down_max', 'Single input'].values[0]
-            inputs['Q_bp_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_bp_ramp_up_max', 'Single input'].values[0]
-            inputs['Q_tur_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_tur_ramp_down_max', 'Single input'].values[0]
-            inputs['Q_tur_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_tur_ramp_up_max', 'Single input'].values[0]
-            inputs['Q_tot_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_tot_ramp_up_max', 'Single input'].values[0]
-            inputs['Q_tot_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_tot_ramp_down_max', 'Single input'].values[0]
+            inputs['Q_max_daily_change'] = config.loc[config['Python Variable Names'] == 'Q_max_daily_change', 'Single input'].values[0]/12.1
+            inputs['Q_bp_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_bp_ramp_down_max', 'Single input'].values[0]/12.1
+            inputs['Q_bp_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_bp_ramp_up_max', 'Single input'].values[0]/12.1
+            inputs['Q_tur_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_tur_ramp_down_max', 'Single input'].values[0]/12.1
+            inputs['Q_tur_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_tur_ramp_up_max', 'Single input'].values[0]/12.1
+            inputs['Q_tot_ramp_up_max'] = config.loc[config['Python Variable Names'] == 'Q_tot_ramp_up_max', 'Single input'].values[0]/12.1
+            inputs['Q_tot_ramp_down_max'] = config.loc[config['Python Variable Names'] == 'Q_tot_ramp_down_max', 'Single input'].values[0]/12.1
             inputs['T_ramp_up_delta'] = config.loc[config['Python Variable Names'] == 'T_ramp_up_delta', 'Single input'].values[0]
             inputs['T_ramp_down_delta'] = config.loc[config['Python Variable Names'] == 'T_ramp_down_delta', 'Single input'].values[0]
             inputs['T_RM61_daily'] = config.loc[config['Python Variable Names'] == 'T_RM61_daily', 'Single input'].values[0]
             inputs['dT_daily'] = config.loc[config['Python Variable Names'] == 'dT_daily', 'Single input'].values[0]
-            inputs['WaterToPowerConversion'] = config.loc[config['Python Variable Names'] == 'WaterToPowerConversion', 'Single input'].values[0]
+            inputs['WaterToPowerConversion'] = config.loc[config['Python Variable Names'] == 'WaterToPowerConversion', 'Single input'].values[0]*12.1
 
             # Hourly values
             hours = [f'H{i:02}' for i in range(1, 25)]
 
             for var in ['Q_bp_min_values', 'Q_bp_max_values', 'Q_tur_min_values', 'Q_tur_max_values',
-                        'Q_tot_min_values',
-                        'Q_tot_max_values',
-                        'T_bp_values', 'T_tur_values', 'T_RM61_hourly_max_values', 'T_RM61_hourly_min_values',
-                        'dT_hourly_values',
-                        'LMP_values', 'Demand_values', 'P_tur_min_values', 'P_tur_max_values']:
+                        'Q_tot_min_values', 'Q_tot_max_values']:
+                inputs[var] = (config.loc[config['Python Variable Names'] == var, hours].values/12.1).flatten().tolist()
+
+            for var in ['T_bp_values', 'T_tur_values', 'T_RM61_hourly_max_values', 'T_RM61_hourly_min_values',
+                        'dT_hourly_values', 'LMP_values', 'Demand_values', 'P_tur_min_values', 'P_tur_max_values']:
                 inputs[var] = config.loc[config['Python Variable Names'] == var, hours].values.flatten().tolist()
 
             # Penalty costs
             for var in ['C_bp_ramp_up', 'C_bp_ramp_down', 'C_tur_ramp_up', 'C_tur_ramp_down', 'C_tot_ramp_up',
                         'C_tot_ramp_down']:
-                inputs[var] = config.loc[config['Python Variable Names'] == var, 'Single input'].values[0]
+                inputs[var] = config.loc[config['Python Variable Names'] == var, 'Single input'].values[0]*12.1
 
             return inputs
         except Exception as e:
