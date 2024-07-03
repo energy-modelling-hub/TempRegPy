@@ -81,8 +81,8 @@ def plot_temperature_analysis(df_dispatch, df_t, df_lmp, save_fig=False, fig_nam
     legend_edgecolor = legend.get_frame().get_edgecolor()
 
     # Calculate the mean of T_RM61 and add text to the top right corner of the second subplot
-    mean_T_RM61 = df_t['T_RM61'].mean()
-    ax3.text(0.95, 0.95, f'Mean T_RM61: {mean_T_RM61:.2f}', transform=ax3.transAxes,
+    mean_t_rm61 = df_t['T_RM61'].mean()
+    ax3.text(0.95, 0.95, f'Mean T_RM61: {mean_t_rm61:.2f}', transform=ax3.transAxes,
              fontsize=12, verticalalignment='top', horizontalalignment='right',
              bbox=dict(facecolor=legend_facecolor, edgecolor=legend_edgecolor, boxstyle='round,pad=0.3'))
 

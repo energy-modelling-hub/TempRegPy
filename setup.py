@@ -15,7 +15,7 @@ FINAL_RELEASE = open(os.path.join(HERE, 'VERSION')).read().strip()
 def read(*paths, **kwargs):
     """Read the contents of a text file safely.
     >>> read("tempregpy", "VERSION")
-    '0.1.0'
+    '0.0.1'
     >>> read("README.md")
     ...
     """

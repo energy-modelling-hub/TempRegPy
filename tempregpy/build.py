@@ -1,8 +1,12 @@
 from .functions import *
-from .logging_config import *
 from .plotting import *
 from .utils import *
 from ortools.linear_solver import pywraplp
+
+HULL_SURF = 'Hull constraint: Surface'
+HULL_RD = 'Hull constraint: Ramping down for '
+HULL_RU = 'Hull constraint: Ramping up for '
+
 
 def build_and_run(inputs):
 
@@ -124,11 +128,7 @@ def build_and_run(inputs):
         (t, u): solver.NumVar(parameters['P_tur_min'][t, u], parameters['P_tur_max'][t, u], 'p_tur[%s,%s]' % (t, u)) for
         t in time for u in units}
 
-    logger.info(f"Optimization variables sucesfully created.")
-    # # Logging variable creation
-    # for var_type, var_dict in variables.items():
-    #     for key, var in var_dict.items():
-    #         logger.info(f"Created variable '{var.name()}' with range [{var.lb()}, {var.ub()}] for {var_type}.")
+    logger.info("Optimization variables sucesfully created.")
 
     # Constraints
     constraints = []
@@ -139,7 +139,7 @@ def build_and_run(inputs):
     # Add constraints for total hourly release
     for u in units:
         for t in time:
-            constraint_id_main.append(f'Total hourly release')
+            constraint_id_main.append('Total hourly release')
             constraint_id_unit.append(f'{u}')
             constraint_id_time.append(f'{t}')
             constraints.append(
@@ -147,15 +147,15 @@ def build_and_run(inputs):
 
     # Add constraint for total daily release
     constraint_id_main.append('Total daily release')
-    constraint_id_unit.append(f'')
-    constraint_id_time.append(f'')
+    constraint_id_unit.append('')
+    constraint_id_time.append('')
     constraints.append(
         solver.Add(sum(variables['q_tot'][t, u] for u in units for t in time) == inputs['Q_tot_daily']))
 
     # Add constraints for maximum average daily temperature
-    constraint_id_main.append(f'Maximum average daily temperature')
-    constraint_id_unit.append(f'')
-    constraint_id_time.append(f'')
+    constraint_id_main.append('Maximum average daily temperature')
+    constraint_id_unit.append('')
+    constraint_id_time.append('')
     constraints.append(
         solver.Add(sum(
             variables['q_bp'][t, u] * parameters['T_bp'][t, u] + variables['q_tur'][t, u] * parameters['T_tur'][t, u]
@@ -167,9 +167,9 @@ def build_and_run(inputs):
         logger.info('Temperature constraints at H01 == H24 have been included in the optimization.')
         if (inputs['cnstr_tur_t01t24'] or inputs['cnstr_bp_t01t24'] or inputs['cnstr_tot_t01t24']):
             logger.warning('Temperature constraints at H01 == H24 may conflict with cyclic turbine, bypass, or total release constraints.')
-        constraint_id_main.append(f'Temperature t01 = t24')
-        constraint_id_unit.append(f'')
-        constraint_id_time.append(f'')
+        constraint_id_main.append('Temperature t01 = t24')
+        constraint_id_unit.append('')
+        constraint_id_time.append('')
         constraints.append(solver.Add(sum(
             variables['q_bp'][time[0], u] * parameters['T_bp'][time[0], u] + variables['q_tur'][time[0], u] *
             parameters['T_tur'][time[0], u] - (
@@ -186,9 +186,9 @@ def build_and_run(inputs):
         if inputs['cnstr_temp_t01t24']:
             logger.warning('Bypass release cyclic constraints (H01=H24) may conflict with cyclic temperature constraints.')
 
-        constraint_id_main.append(f'q_bp t01 = t24')
-        constraint_id_unit.append(f'')
-        constraint_id_time.append(f'')
+        constraint_id_main.append('q_bp t01 = t24')
+        constraint_id_unit.append('')
+        constraint_id_time.append('')
         constraints.append(solver.Add(
             sum(variables['q_bp'][time[0], u] for u in units) == sum(variables['q_bp'][time[-1], u] for u in units)))
 
@@ -196,9 +196,9 @@ def build_and_run(inputs):
         logger.info('Turbine release cyclic constraints (H01=H24) have been included in the optimization.')
         if inputs['cnstr_temp_t01t24']:
             logger.warning('Turbine release cyclic constraints (H01=H24) may conflict with cyclic temperature constraints.')
-        constraint_id_main.append(f'q_tur t01 = t24')
-        constraint_id_unit.append(f'')
-        constraint_id_time.append(f'')
+        constraint_id_main.append('q_tur t01 = t24')
+        constraint_id_unit.append('')
+        constraint_id_time.append('')
         constraints.append(solver.Add(
             sum(variables['q_tur'][time[0], u] for u in units) == sum(variables['q_tur'][time[-1], u] for u in units)))
 
@@ -206,9 +206,9 @@ def build_and_run(inputs):
         logger.info('Total release cyclic constraints (H01=H24) have been included in the optimization.')
         if inputs['cnstr_temp_t01t24']:
             logger.warning('Total release cyclic constraints (H01=H24) may conflict with cyclic temperature constraints.')
-        constraint_id_main.append(f'q_tot t01 = t24')
-        constraint_id_unit.append(f'')
-        constraint_id_time.append(f'')
+        constraint_id_main.append('q_tot t01 = t24')
+        constraint_id_unit.append('')
+        constraint_id_time.append('')
         constraints.append(solver.Add(
             sum(variables['q_tot'][time[0], u] for u in units) == sum(variables['q_tot'][time[-1], u] for u in units)))
 
@@ -216,8 +216,8 @@ def build_and_run(inputs):
         logger.info('Maximum daily operating range constraints have been included in the optimization.')
         for t in time:
             # Add constraints for maximum total daily ramping rate 8000CFS
-            constraint_id_main.append(f'Maximum daily operating range - min')
-            constraint_id_unit.append(f'')
+            constraint_id_main.append('Maximum daily operating range - min')
+            constraint_id_unit.append('')
             constraint_id_time.append(f'{t}')
             constraints.append(
                 solver.Add(
@@ -225,8 +225,8 @@ def build_and_run(inputs):
 
         for t in time:
             # Add constraints for maximum total daily ramping rate 8000CFS
-            constraint_id_main.append(f'Maximum daily operating range - max')
-            constraint_id_unit.append(f'')
+            constraint_id_main.append('Maximum daily operating range - max')
+            constraint_id_unit.append('')
             constraint_id_time.append(f'{t}')
             constraints.append(
                 solver.Add(sum(variables['q_tot_min'][u] for u in units) + inputs['Q_max_daily_change'] >= sum(
@@ -234,8 +234,8 @@ def build_and_run(inputs):
 
     # Add constraints for maximum hourly temperature
     for t in time:
-        constraint_id_main.append(f'Maximum hourly temperature')
-        constraint_id_unit.append(f'')
+        constraint_id_main.append('Maximum hourly temperature')
+        constraint_id_unit.append('')
         constraint_id_time.append(f'{t}')
         constraints.append(solver.Add(sum(
             variables['q_bp'][t, u] * parameters['T_bp'][t, u] + variables['q_tur'][t, u] * parameters['T_tur'][t, u]
@@ -245,8 +245,8 @@ def build_and_run(inputs):
 
     # Add constraints for minimum hourly temperature
     for t in time:
-        constraint_id_main.append(f'Minimum hourly temperature')
-        constraint_id_unit.append(f'')
+        constraint_id_main.append('Minimum hourly temperature')
+        constraint_id_unit.append('')
         constraint_id_time.append(f'{t}')
         constraints.append(solver.Add(sum(
             variables['q_bp'][t, u] * parameters['T_bp'][t, u] + variables['q_tur'][t, u] * parameters['T_tur'][t, u]
@@ -257,7 +257,7 @@ def build_and_run(inputs):
     # Add constraints for power balance
     for u in units:
         for t in time:
-            constraint_id_main.append(f'Power Output')
+            constraint_id_main.append('Power Output')
             constraint_id_unit.append(f'{u}')
             constraint_id_time.append(f'{t}')
             constraints.append(
@@ -265,8 +265,8 @@ def build_and_run(inputs):
 
     # Add constraints for power balance
     for t in time:
-        constraint_id_main.append(f'Power Demand Balance')
-        constraint_id_unit.append(f'')
+        constraint_id_main.append('Power Demand Balance')
+        constraint_id_unit.append('')
         constraint_id_time.append(f'{t}')
         constraints.append(solver.Add(parameters['Demand'][t] - sum(variables['p_tur'][t, u] for u in units) >= 0))
 
@@ -279,7 +279,7 @@ def build_and_run(inputs):
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
                 # Add ramp up constraints
                 # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
-                constraint_id_main.append(f'Bypass ramping')
+                constraint_id_main.append('Bypass ramping')
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -297,7 +297,7 @@ def build_and_run(inputs):
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
                 # Add ramp up constraints
                 # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
-                constraint_id_main.append(f'Bypass ramping')
+                constraint_id_main.append('Bypass ramping')
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -317,7 +317,7 @@ def build_and_run(inputs):
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
                 # Add ramp up constraints
                 # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
-                constraint_id_main.append(f'Turbine ramping')
+                constraint_id_main.append('Turbine ramping')
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -335,7 +335,7 @@ def build_and_run(inputs):
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
                 # Add ramp up constraints
                 # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
-                constraint_id_main.append(f'Turbine ramping')
+                constraint_id_main.append('Turbine ramping')
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -354,7 +354,7 @@ def build_and_run(inputs):
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
                 # Add ramp up constraints
                 # If t is the first time period, compare it with the last time period to ensure cyclical ramp constraint
-                constraint_id_main.append(f'Ramp up constraint')
+                constraint_id_main.append('Ramp up constraint')
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -370,7 +370,7 @@ def build_and_run(inputs):
             for i in range(len(time)):
                 t = time[i]
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-                constraint_id_main.append(f'Ramp down constraint')
+                constraint_id_main.append('Ramp down constraint')
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -386,7 +386,7 @@ def build_and_run(inputs):
         logger.info('Convex hull temperature ramping approximation constraints have been included in the optimization.')
         for u in units:
             for t in time:
-                constraint_id_main.append(f'Temperature ramp up constraint')
+                constraint_id_main.append('Temperature ramp up constraint')
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 constraints.append(solver.Add((variables['q_bp_t_tur_t1'][t, u] - variables['q_tur_t_bp_t1'][t, u]) * (
@@ -395,7 +395,7 @@ def build_and_run(inputs):
 
         for u in units:
             for t in time:
-                constraint_id_main.append(f'Temperature ramp down constraint')
+                constraint_id_main.append('Temperature ramp down constraint')
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 constraints.append(solver.Add((variables['q_bp_t_tur_t1'][t, u] - variables['q_tur_t_bp_t1'][t, u]) * (
@@ -407,7 +407,7 @@ def build_and_run(inputs):
                 for i in range(len(time)):
                     t = time[i]
                     prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-                    constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hulls['hull_X'].label)
+                    constraint_id_main.append(HULL_SURF + str(j) + ' for ' + hulls['hull_X'].label)
                     constraint_id_unit.append(f'{u}')
                     constraint_id_time.append(f'{t}')
                     if i == 0:
@@ -444,7 +444,7 @@ def build_and_run(inputs):
                 for i in range(len(time)):
                     t = time[i]
                     prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-                    constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hulls['hull_Y'].label)
+                    constraint_id_main.append(HULL_SURF + str(j) + ' for ' + hulls['hull_Y'].label)
                     constraint_id_unit.append(f'{u}')
                     constraint_id_time.append(f'{t}')
                     if i == 0:
@@ -481,7 +481,7 @@ def build_and_run(inputs):
                 for i in range(len(time)):
                     t = time[i]
                     prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-                    constraint_id_main.append(f'Hull constraint: Surface' + str(j) + ' for ' + hulls['hull_Z'].label)
+                    constraint_id_main.append(HULL_SURF + str(j) + ' for ' + hulls['hull_Z'].label)
                     constraint_id_unit.append(f'{u}')
                     constraint_id_time.append(f'{t}')
                     if i == 0:
@@ -518,7 +518,7 @@ def build_and_run(inputs):
             for i in range(len(time)):
                 t = time[i]
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-                constraint_id_main.append(f'Hull constraint: Ramping down for ' + hulls['hull_X'].label)
+                constraint_id_main.append(HULL_RD + hulls['hull_X'].label)
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -535,7 +535,7 @@ def build_and_run(inputs):
             for i in range(len(time)):
                 t = time[i]
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-                constraint_id_main.append(f'Hull constraint: Ramping up for ' + hulls['hull_X'].label)
+                constraint_id_main.append(HULL_RU + hulls['hull_X'].label)
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -552,7 +552,7 @@ def build_and_run(inputs):
             for i in range(len(time)):
                 t = time[i]
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-                constraint_id_main.append(f'Hull constraint: Ramping down for ' + hulls['hull_Y'].label)
+                constraint_id_main.append(HULL_RD + hulls['hull_Y'].label)
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -569,7 +569,7 @@ def build_and_run(inputs):
             for i in range(len(time)):
                 t = time[i]
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-                constraint_id_main.append(f'Hull constraint: Ramping up for ' + hulls['hull_Y'].label)
+                constraint_id_main.append(HULL_RU + hulls['hull_Y'].label)
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -586,7 +586,7 @@ def build_and_run(inputs):
             for i in range(len(time)):
                 t = time[i]
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-                constraint_id_main.append(f'Hull constraint: Ramping down for ' + hulls['hull_Z'].label)
+                constraint_id_main.append(HULL_RD + hulls['hull_Z'].label)
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -603,7 +603,7 @@ def build_and_run(inputs):
             for i in range(len(time)):
                 t = time[i]
                 prev_t = time[i - 1] if i > 0 else time[-1]  # Handling wrap-around
-                constraint_id_main.append(f'Hull constraint: Ramping up for ' + hulls['hull_Z'].label)
+                constraint_id_main.append(HULL_RU + hulls['hull_Z'].label)
                 constraint_id_unit.append(f'{u}')
                 constraint_id_time.append(f'{t}')
                 if i == 0:
@@ -701,6 +701,7 @@ def build_and_run(inputs):
             # Usage example
             df_dispatch = concat_and_rename(results, 'q_tur', 'q_bp')
             df_lmp = process_single_index(parameters['LMP'], time, input=True, col_name='LMP')
+            # tmp = pd.DataFrame(parameters['Demand'])
             # Concatenate initial dataframes
             results['Temperature_summary'] = pd.concat([
                 results['T_RM61'],
@@ -736,7 +737,8 @@ def build_and_run(inputs):
                     os.makedirs(simulation_folder_path)
                     logger.info(f"The folder '{simulation_folder_path}' was successfully created.")
                 except Exception as e:
-                    logger.error(f"Unable to create the folder '{simulation_folder_path}'. Encountered error: {e}. Please check your permissions and ensure the path is correct.")
+                    logger.error(f"Unable to create the folder '{simulation_folder_path}'. Encountered error: {e}. "
+                                 f"Please check your permissions and ensure the path is correct.")
                     sys.exit(1)
 
             # Export results to a file
@@ -752,7 +754,8 @@ def build_and_run(inputs):
                         else:
                             f.write(f'{key}: {value}\n')
             except Exception as e:
-                logger.error(f"Unable to write results to the file '{results_file_path}'. Error encountered: {e}. Please check file permissions and ensure the directory exists.")
+                logger.error(f"Unable to write results to the file '{results_file_path}'. Error encountered: {e}. "
+                             f"Please check file permissions and ensure the directory exists.")
                 sys.exit(1)
 
             for key, value in results.items():
@@ -774,7 +777,8 @@ def build_and_run(inputs):
         return inputs, results
 
     except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}. The problem does not have an optimal solution. Please review and revise the input data.")
+        logger.error(f"An unexpected error occurred: {e}. The problem does not have an optimal solution. Please review "
+                     f"and revise the input data.")
     finally:
         if 'e' in locals() or 'e' in globals():
             input("Press Enter to exit...")
