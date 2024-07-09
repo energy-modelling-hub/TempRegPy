@@ -13,13 +13,7 @@ HERE = os.path.abspath(os.path.dirname(__file__))
 FINAL_RELEASE = open(os.path.join(HERE, 'VERSION')).read().strip()
 
 def read(*paths, **kwargs):
-    """Read the contents of a text file safely.
-    >>> read("tempregpy", "VERSION")
-    '0.0.1'
-    >>> read("README.md")
-    ...
-    """
-
+    """Read the contents of a text file safely."""
     content = ""
     with io.open(
         os.path.join(os.path.dirname(__file__), *paths),
@@ -28,7 +22,6 @@ def read(*paths, **kwargs):
         content = open_file.read().strip()
     return content
 
-
 def read_requirements(path):
     return [
         line.strip()
@@ -36,10 +29,13 @@ def read_requirements(path):
         if not line.startswith(('"', "#", "-", "git+"))
     ]
 
-
 setup(
     name="tempregpy",
-    # version=FINAL_RELEASE,
+    use_scm_version={
+        'version_scheme': 'post-release',
+        'local_scheme': lambda version: version.format_choice("" if version.exact else "+{node}", "+dirty"),
+    },
+    setup_requires=['setuptools_scm'],
     description="Awesome tempregpy created by energy-modelling-hub",
     url="https://github.com/energy-modelling-hub/TempRegPy/",
     long_description=read("README.md"),
@@ -47,11 +43,6 @@ setup(
     author="M. Pavičević, Q. Ploussard",
     packages=find_packages(exclude=["tests", ".github"]),
     license="MIT License",
-    use_scm_version={
-        'version_scheme': 'post-release',
-        'local_scheme': lambda version: version.format_choice("" if version.exact else "+{node}", "+dirty"),
-        'fallback_version': FINAL_RELEASE,
-    },
     install_requires=read_requirements("requirements.txt"),
     entry_points={
         "console_scripts": ["tempregpy = tempregpy.__main__:main"]
