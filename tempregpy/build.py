@@ -629,6 +629,20 @@ def build_and_run(inputs):
 
     objective.SetMaximization()
 
+    # Determine the directory where the Excel file is located
+    base_directory = os.path.dirname(inputs['file_path'])
+
+    # Create the "results" folder in the same directory as the Excel file
+    results_folder_path = os.path.join(base_directory, 'Results')
+    os.makedirs(results_folder_path, exist_ok=True)
+
+    # Create the simulation folder inside the "results" folder
+    simulation_folder_path = os.path.join(results_folder_path, inputs['sim_folder'])
+
+    with open(simulation_folder_path + '\\model.mps', 'w') as file:
+        mps_string = solver.ExportModelAsMpsFormat(fixed_format=False, obfuscated=False)
+        file.write(mps_string)
+
     # Solve the problem
     status = solver.Solve()
 
@@ -643,16 +657,6 @@ def build_and_run(inputs):
         logger.warning("Optimization not solved: No solution found.")
     else:
         logger.error("Optimization failed: Solver encountered an error.")
-
-    # Determine the directory where the Excel file is located
-    base_directory = os.path.dirname(inputs['file_path'])
-
-    # Create the "results" folder in the same directory as the Excel file
-    results_folder_path = os.path.join(base_directory, 'Results')
-    os.makedirs(results_folder_path, exist_ok=True)
-
-    # Create the simulation folder inside the "results" folder
-    simulation_folder_path = os.path.join(results_folder_path, inputs['sim_folder'])
 
     # Check if the problem has an optimal solution
     try:
