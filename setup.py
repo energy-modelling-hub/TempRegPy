@@ -39,7 +39,7 @@ def read_requirements(path):
 
 setup(
     name="tempregpy",
-    # version=read("tempregpy", "VERSION"),
+    # version=FINAL_RELEASE,
     description="Awesome tempregpy created by energy-modelling-hub",
     url="https://github.com/energy-modelling-hub/TempRegPy/",
     long_description=read("README.md"),

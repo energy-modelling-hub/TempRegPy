@@ -81,6 +81,7 @@ def build_and_run(inputs):
     solver = pywraplp.Solver.CreateSolver(solver_name)
 
     solver.EnableOutput()
+    solver.iterations()
     # Log solver information
     logger.info(f"Created optimization solver '{solver_name}'.")
 
