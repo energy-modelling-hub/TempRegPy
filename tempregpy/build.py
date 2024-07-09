@@ -80,6 +80,7 @@ def build_and_run(inputs):
     solver_name = 'GLOP'  # Example solver name
     solver = pywraplp.Solver.CreateSolver(solver_name)
 
+    solver.EnableOutput()
     # Log solver information
     logger.info(f"Created optimization solver '{solver_name}'.")
 
