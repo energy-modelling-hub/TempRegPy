@@ -34,6 +34,7 @@ setup(
     use_scm_version={
         'version_scheme': 'post-release',
         'local_scheme': lambda version: version.format_choice("" if version.exact else "+{node}", "+dirty"),
+        'fallback_version': FINAL_RELEASE,
     },
     setup_requires=['setuptools_scm'],
     description="Awesome tempregpy created by energy-modelling-hub",

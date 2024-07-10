@@ -641,6 +641,19 @@ def build_and_run(inputs):
     # Create the simulation folder inside the "results" folder
     simulation_folder_path = os.path.join(results_folder_path, inputs['sim_folder'])
 
+    # Check if the folder already exists
+    if os.path.exists(simulation_folder_path):
+        logger.warning("The existing simulation will be overwritten.")
+    else:
+        # Create the folder
+        try:
+            os.makedirs(simulation_folder_path)
+            logger.info(f"The folder '{simulation_folder_path}' was successfully created.")
+        except Exception as e:
+            logger.error(f"Unable to create the folder '{simulation_folder_path}'. Encountered error: {e}. "
+                         f"Please check your permissions and ensure the path is correct.")
+            sys.exit(1)
+
     with open(simulation_folder_path + '\\model.mps', 'w') as file:
         mps_string = solver.ExportModelAsMpsFormat(fixed_format=False, obfuscated=False)
         file.write(mps_string)
@@ -734,19 +747,6 @@ def build_and_run(inputs):
             results['Temperature_summary'] = pd.concat([results['Temperature_summary'], results['T_dam']], axis=1)
             results['Temperature_summary']['d_T'] = process_single_index(parameters['dT_hourly'], time, input=True,
                                                                          col_name='UnitA')
-            # Check if the folder already exists
-            if os.path.exists(simulation_folder_path):
-                logger.warning("The existing simulation will be overwritten.")
-            else:
-                # Create the folder
-                try:
-                    os.makedirs(simulation_folder_path)
-                    logger.info(f"The folder '{simulation_folder_path}' was successfully created.")
-                except Exception as e:
-                    logger.error(f"Unable to create the folder '{simulation_folder_path}'. Encountered error: {e}. "
-                                 f"Please check your permissions and ensure the path is correct.")
-                    sys.exit(1)
-
             # Export results to a file
             results_file_path = os.path.join(simulation_folder_path, 'optimization_results.txt')
             try:
@@ -766,9 +766,9 @@ def build_and_run(inputs):
 
             for key, value in results.items():
                 if isinstance(value, pd.DataFrame):
-                    value.to_csv(f'{simulation_folder_path + '\\'}{key}.csv', index=False)
+                    value.to_csv(f'{simulation_folder_path + "\\"}{key}.csv', index=False)
                 else:
-                    with open(f'{simulation_folder_path + '\\'}{key}.csv', 'w') as f:
+                    with open(f'{simulation_folder_path + "\\"}{key}.csv', 'w') as f:
                         f.write(str(value))
 
             if inputs['plt_show'] is True:
