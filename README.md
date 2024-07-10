@@ -21,7 +21,7 @@ pip install -e .
 To run the code from the command line interface (CLI), use the following command:
 
 ```python:
-python -m tempregpy run -c C:\Users\mpavicevic\Desktop\test\TempRegPy.xlsm
+python -m tempregpy run -c path_to\TempRegPy.xlsm
 ```
 
 # Running the Code from Excel
