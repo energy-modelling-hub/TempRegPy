@@ -8,7 +8,7 @@ HULL_RD = 'Hull constraint: Ramping down for '
 HULL_RU = 'Hull constraint: Ramping up for '
 
 
-def build_and_run(inputs):
+def build_and_run(inputs, milp=False):
 
     # Sets
     time = ["t{:02}".format(i) for i in range(1, 25)]
@@ -77,7 +77,10 @@ def build_and_run(inputs):
     log_sample_summary(logger, "Q_tot_max", parameters['Q_tot_max'])
 
     # Create solver
-    solver_name = 'GLOP'  # Example solver name
+    if milp is True:
+        solver_name = 'SCIP'
+    else:
+        solver_name = 'GLOP'  # Example solver name
     solver = pywraplp.Solver.CreateSolver(solver_name)
 
     solver.EnableOutput()
@@ -87,48 +90,62 @@ def build_and_run(inputs):
 
     variables = {}
     # Variables
-    variables['q_bp'] = {
-        (t, u): solver.NumVar(parameters['Q_bp_min'][t, u], parameters['Q_bp_max'][t, u], 'q_bp[%s,%s]' % (t, u)) for t
-        in time for u in units}
-    variables['q_tur'] = {
-        (t, u): solver.NumVar(parameters['Q_tur_min'][t, u], parameters['Q_tur_max'][t, u], 'q_tur[%s,%s]' % (t, u)) for
-        t in time for u in units}
-    variables['q_tot'] = {
-        (t, u): solver.NumVar(parameters['Q_tot_min'][t], parameters['Q_tot_max'][t], 'q_tot[%s,%s]' % (t, u)) for t in
-        time for u in units}
+    variables['q_bp'] = {(t, u): solver.NumVar(parameters['Q_bp_min'][t, u],
+                                               parameters['Q_bp_max'][t, u],
+                                               'q_bp[%s,%s]' % (t, u)) for t in time for u in units
+                         }
+    variables['q_tur'] = {(t, u): solver.NumVar(parameters['Q_tur_min'][t, u],
+                                                parameters['Q_tur_max'][t, u],
+                                                'q_tur[%s,%s]' % (t, u)) for t in time for u in units
+                          }
+    variables['q_tot'] = {(t, u): solver.NumVar(parameters['Q_tot_min'][t],
+                                                parameters['Q_tot_max'][t],
+                                                'q_tot[%s,%s]' % (t, u)) for t in time for u in units
+                          }
     variables['q_bp_t_tur_t1'] = {(t, u): solver.NumVar(parameters['Q_bp_min'][t, u] * parameters['Q_tur_min'][t, u],
                                                         parameters['Q_bp_max'][t, u] * parameters['Q_tur_max'][t, u],
-                                                        'q_bp_t_tur_t1[%s,%s]' % (t, u)) for t in time for u in units}
+                                                        'q_bp_t_tur_t1[%s,%s]' % (t, u)) for t in time for u in units
+                                  }
     variables['q_tur_t_bp_t1'] = {(t, u): solver.NumVar(parameters['Q_bp_min'][t, u] * parameters['Q_tur_min'][t, u],
                                                         parameters['Q_bp_max'][t, u] * parameters['Q_tur_max'][t, u],
-                                                        'q_tur_t_bp_t1[%s,%s]' % (t, u)) for t in time for u in units}
+                                                        'q_tur_t_bp_t1[%s,%s]' % (t, u)) for t in time for u in units
+                                  }
     variables['q_tot_t_tot_t1'] = {(t, u): solver.NumVar(parameters['Q_tot_min'][t] * parameters['Q_tot_min'][t],
                                                          parameters['Q_tot_max'][t] * parameters['Q_tot_max'][t],
-                                                         'q_tot_t_tot_t1[%s,%s]' % (t, u)) for t in time for u in units}
-    variables['q_bp_ramp_up'] = {
-        (t, u): solver.NumVar(0, inputs['Q_bp_ramp_up_max'], 'q_bp_ramp_up[%s,%s]' % (t, u)) for t in time for u in
-        units}
-    variables['q_bp_ramp_down'] = {
-        (t, u): solver.NumVar(0, inputs['Q_bp_ramp_down_max'], 'q_bp_ramp_down[%s,%s]' % (t, u)) for t in time for u
-        in units}
-    variables['q_tur_ramp_up'] = {
-        (t, u): solver.NumVar(0, inputs['Q_tur_ramp_up_max'], 'q_tur_ramp_up[%s,%s]' % (t, u)) for t in time for u
-        in units}
-    variables['q_tur_ramp_down'] = {
-        (t, u): solver.NumVar(0, inputs['Q_tur_ramp_down_max'], 'q_tur_ramp_down[%s,%s]' % (t, u)) for t in time for
-        u in units}
-    variables['q_tot_ramp_up'] = {
-        (t, u): solver.NumVar(0, inputs['Q_tot_ramp_up_max'], 'q_tot_ramp_up[%s,%s]' % (t, u)) for t in time for u
-        in units}
-    variables['q_tot_ramp_down'] = {
-        (t, u): solver.NumVar(0, inputs['Q_tot_ramp_down_max'], 'q_tot_ramp_down[%s,%s]' % (t, u)) for t in time for
-        u in units}
-    variables['q_tot_min'] = {
-        (u): solver.NumVar(min(parameters['Q_tot_min'].values()), max(parameters['Q_tot_max'].values()),
-                           'q_tot_min[%s]' % (u)) for u in units}
-    variables['p_tur'] = {
-        (t, u): solver.NumVar(parameters['P_tur_min'][t, u], parameters['P_tur_max'][t, u], 'p_tur[%s,%s]' % (t, u)) for
-        t in time for u in units}
+                                                         'q_tot_t_tot_t1[%s,%s]' % (t, u)) for t in time for u in units
+                                   }
+    variables['q_bp_ramp_up'] = {(t, u): solver.NumVar(0,
+                                                       inputs['Q_bp_ramp_up_max'],
+                                                       'q_bp_ramp_up[%s,%s]' % (t, u)) for t in time for u in units
+                                 }
+    variables['q_bp_ramp_down'] = {(t, u): solver.NumVar(0,
+                                                         inputs['Q_bp_ramp_down_max'],
+                                                         'q_bp_ramp_down[%s,%s]' % (t, u)) for t in time for u in units
+                                   }
+    variables['q_tur_ramp_up'] = {(t, u): solver.NumVar(0,
+                                                        inputs['Q_tur_ramp_up_max'],
+                                                        'q_tur_ramp_up[%s,%s]' % (t, u)) for t in time for u in units
+                                  }
+    variables['q_tur_ramp_down'] = {(t, u): solver.NumVar(0,
+                                                          inputs['Q_tur_ramp_down_max'],
+                                                          'q_tur_ramp_down[%s,%s]' % (t, u)) for t in time for u in units
+                                    }
+    variables['q_tot_ramp_up'] = {(t, u): solver.NumVar(0,
+                                                        inputs['Q_tot_ramp_up_max'],
+                                                        'q_tot_ramp_up[%s,%s]' % (t, u)) for t in time for u in units
+                                  }
+    variables['q_tot_ramp_down'] = {(t, u): solver.NumVar(0,
+                                                          inputs['Q_tot_ramp_down_max'],
+                                                          'q_tot_ramp_down[%s,%s]' % (t, u)) for t in time for u in units
+                                    }
+    variables['q_tot_min'] = {(u): solver.NumVar(min(parameters['Q_tot_min'].values()),
+                                                 max(parameters['Q_tot_max'].values()),
+                                                 'q_tot_min[%s]' % (u)) for u in units
+                              }
+    variables['p_tur'] = {(t, u): solver.NumVar(parameters['P_tur_min'][t, u],
+                                                parameters['P_tur_max'][t, u],
+                                                'p_tur[%s,%s]' % (t, u)) for t in time for u in units
+                          }
 
     logger.info("Optimization variables sucesfully created.")
 
@@ -788,4 +805,3 @@ def build_and_run(inputs):
     finally:
         if 'e' in locals() or 'e' in globals():
             input("Press Enter to exit...")
-        # input("Press Enter to exit...")
