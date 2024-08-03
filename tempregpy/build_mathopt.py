@@ -1,3 +1,5 @@
+import pandas as pd
+
 from .functions import *
 from .plotting import *
 from .utils import *
@@ -7,19 +9,42 @@ from ortools.math_opt.python import mathopt
 
 def build_and_run(inputs, milp=False):
 
-    # Sets
-    plants = ["PlantA"]
+    #####################
+    ###### CONVEX HULLS
+    #####################
+    gauges_hulls = {}
+    for rn in inputs['river_nodes']:
+        gauges_hulls[rn] = gauge_hulls(inputs, rn)
+        # inflows_hulls[rn] = inflow_hulls(inputs, rn)
 
     logger.info('Assigning parameters for optimization:')
     parameters = {}
     parameters['LMP'] = {(n, t): value for n, row in inputs['LMP_values'].iterrows() for t, value in row.items()}
-    parameters['T_gauge_hourly_max'] = {(g, t): value for g, row in inputs['T_gauge_hourly_max_values'].iterrows() for t, value in row.items()}
-    parameters['T_gauge_hourly_min'] = {(g, t): value for g, row in inputs['T_gauge_hourly_min_values'].iterrows() for t, value in row.items()}
-    parameters['dT_hourly'] = {(pg, t): value for pg, row in inputs['dT_hourly_values'].iterrows() for t, value in row.items()}
-    parameters['T_gauge_daily'] = {(g, s): value for g, row in inputs['T_gauge_daily'].iterrows() for s, value in row.items()}
-    parameters['dT_daily'] = {(g, s): value for g, row in inputs['dT_daily'].iterrows() for s, value in row.items()}
+    parameters['T_gg_hourly_max'] = {(g, t): value for g, row in inputs['T_gauge_hourly_max_values'].iterrows() for t, value in row.items()}
+    parameters['T_gg_hourly_min'] = {(g, t): value for g, row in inputs['T_gauge_hourly_min_values'].iterrows() for t, value in row.items()}
+    # parameters['dT_hourly'] = {(pg, t): value for pg, row in inputs['dT_hourly_values'].iterrows() for t, value in row.items()}
+    parameters['dT_hourly'] = {(i, j, t): inputs['dT_hourly_values'].loc[f'{i} - {j}', t] if f'{i} - {j}' in inputs['dT_hourly_values'].index else 0
+        for i in inputs['river_nodes'] for j in inputs['river_nodes'] for t in inputs['time_horizon']
+    }
+    parameters['T_gg_daily'] = {(g, s): value for g, row in inputs['T_gauge_daily'].iterrows() for s, value in row.items()}
+    # parameters['dT_daily'] = {(g, s): value for g, row in inputs['dT_daily'].iterrows() for s, value in row.items()}
+    parameters['dT_daily'] = {(i, j): inputs['dT_daily'].loc[f'{i} - {j}', 'Single input'] if f'{i} - {j}' in inputs['dT_daily'].index else 0
+        for i in inputs['river_nodes'] for j in inputs['river_nodes']
+    }
     parameters['T_bp'] = {(p, t): value for p, row in inputs['T_bp_values'].iterrows() for t, value in row.items()}
     parameters['T_tur'] = {(p, t): value for p, row in inputs['T_tur_values'].iterrows() for t, value in row.items()}
+    parameters['T_source_hourly_max'] = {(p, t): inputs['T_source_hourly_max_values'].loc[f'{p}', t] if f'{p}' in inputs['T_source_hourly_max_values'].index else 25
+        for p in inputs['river_nodes'] for t in inputs['time_horizon']
+    }
+    parameters['T_source_hourly_min'] = {(p, t): inputs['T_source_hourly_min_values'].loc[f'{p}', t] if f'{p}' in inputs['T_source_hourly_min_values'].index else 0
+        for p in inputs['river_nodes'] for t in inputs['time_horizon']
+    }
+    parameters['T_sink_hourly_max'] = {(p, t): inputs['T_sink_hourly_max_values'].loc[f'{p}', t] if f'{p}' in inputs['T_sink_hourly_max_values'].index else 30
+        for p in inputs['river_nodes'] for t in inputs['time_horizon']
+    }
+    parameters['T_sink_hourly_min'] = {(p, t): inputs['T_sink_hourly_min_values'].loc[f'{p}', t] if f'{p}' in inputs['T_sink_hourly_min_values'].index else 0
+        for p in inputs['river_nodes'] for t in inputs['time_horizon']
+    }
     parameters['Q_bp_min'] = {(p, t): value for p, row in inputs['Q_bp_min_values'].iterrows() for t, value in row.items()}
     parameters['Q_bp_max'] = {(p, t): value for p, row in inputs['Q_bp_max_values'].iterrows() for t, value in row.items()}
     parameters['Q_tur_min'] = {(p, t): value for p, row in inputs['Q_tur_min_values'].iterrows() for t, value in row.items()}
@@ -77,8 +102,8 @@ def build_and_run(inputs, milp=False):
     log_sample_summary(logger, "Demand values", parameters['Demand'])
 
     # Log summary of temperature and demand parameters
-    log_sample_summary(logger, "T_gauge_hourly_max values", parameters['T_gauge_hourly_max'])
-    log_sample_summary(logger, "T_gauge_hourly_min values", parameters['T_gauge_hourly_min'])
+    log_sample_summary(logger, "T_gg_hourly_max values", parameters['T_gg_hourly_max'])
+    log_sample_summary(logger, "T_gg_hourly_min values", parameters['T_gg_hourly_min'])
     log_sample_summary(logger, "dT_hourly values", parameters['dT_hourly'])
 
     # Log total counts for other parameters
@@ -125,6 +150,10 @@ def build_and_run(inputs, milp=False):
                                                  ub=max(value for (p, t), value in parameters['Q_tot_max'].items() if p == plant),
                                                  name=f'q_tot_min_{plant}') for plant in inputs['river_nodes']
                               ]
+    variables['p_tur'] = [[model.add_variable(lb=parameters['P_tur_min'][p, t],
+                                              ub=parameters['P_tur_max'][p, t],
+                                              name=f'p_tur_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
+                         ]
     variables['q_bp'] = [[model.add_variable(lb=parameters['Q_bp_min'][p, t],
                                              ub=parameters['Q_bp_max'][p, t],
                                              name=f'q_bp_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
@@ -149,13 +178,9 @@ def build_and_run(inputs, milp=False):
                                                ub=parameters['Q_sink_max'][p, 'Single input'],
                                                name=f'q_sink_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
                           ]
-    # variables['q_flow'] = [[model.add_variable(lb=0,
-    #                                            ub=100000,
-    #                                            name=f'q_flow_{rn}_{t}') for t in inputs['time_horizon']] for rn in inputs['river_topology']
-    #                     ]
     variables['q_flow'] = [[[model.add_variable(lb=parameters['Flow_i_j_min'][i,j,t],
                                                 ub=parameters['Flow_i_j_max'][i,j,t],
-                                                name=f'q_flow_{i}_{j}_{t}') for t in inputs['time_horizon']] for i in inputs['river_nodes']] for j in inputs['river_nodes']
+                                                name=f'q_flow_{i}_{j}_{t}') for t in inputs['time_horizon']] for j in inputs['river_nodes']] for i in inputs['river_nodes']
                           ]
     variables['q_in_flow'] = [[model.add_variable(lb=0,
                                                   ub=100000,
@@ -165,6 +190,14 @@ def build_and_run(inputs, milp=False):
                                                    ub=100000,
                                                    name=f'q_out_flow_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
                               ]
+    variables['X'] = [[model.add_variable(lb=0,
+                                          ub=100000,
+                                          name=f'X_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
+                     ]
+    variables['T_gg'] = [[model.add_variable(lb=parameters['T_gg_hourly_min'][j,t],
+                                                ub=parameters['T_gg_hourly_max'][j,t],
+                                                name=f'T_gauge_{j}_{t}') for t in inputs['time_horizon']] for j in inputs['river_nodes']
+                          ]
     variables['q_bp_ramp_up'] = [[model.add_variable(lb=0,
                                                      ub=parameters['Q_bp_ramp_up_max'][p, 'Single input'],
                                                      name=f'q_bp_ramp_up_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
@@ -197,28 +230,8 @@ def build_and_run(inputs, milp=False):
                                                        ub=parameters['Q_gg_ramp_down_max'][p, 'Single input'],
                                                        name=f'q_gg_ramp_down_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
                          ]
-    variables['p_tur'] = [[model.add_variable(lb=parameters['P_tur_min'][p, t],
-                                              ub=parameters['P_tur_max'][p, t],
-                                              name=f'p_tur_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
-                         ]
     logger.info(f"Optimization variables sucesfully created. {list(variables)}")
 
-    # Objective
-    # obj_fnc = mathopt.LinearExpression()
-    # # Add constraints for total hourly release
-    # for p in range(len(inputs['river_nodes'])):
-    #     plant = inputs['river_nodes'][p]
-    #     for t in range(len(inputs['time_horizon'])):
-    #         time = inputs['time_horizon'][t]
-    #         for n in range(len(inputs['nodes'])):
-    #             node = inputs['nodes'][n]
-    #             obj_fnc += (variables['p_tur'][p][t] * parameters['LMP'][node,time] * parameters['plants_nodes'][plant,node]
-    #                         - variables['q_bp_ramp_up'][p][t] * parameters['C_bp_ramp_up'][plant, 'Single input']
-    #                         - variables['q_bp_ramp_down'][p][t] * parameters['C_bp_ramp_down'][plant, 'Single input']
-    #                         - variables['q_tur_ramp_up'][p][t] * parameters['C_tur_ramp_up'][plant, 'Single input']
-    #                         - variables['q_tur_ramp_down'][p][t] * parameters['C_tur_ramp_down'][plant, 'Single input']
-    #                         - variables['q_tot_ramp_up'][p][t] * parameters['C_tot_ramp_up'][plant, 'Single input']
-    #                         - variables['q_tot_ramp_down'][p][t] * parameters['C_tot_ramp_down'][plant, 'Single input'])
     obj_fnc = mathopt.LinearExpression()
     # Add constraints for total hourly release
     for p in range(len(inputs['river_nodes'])):
@@ -234,8 +247,9 @@ def build_and_run(inputs, milp=False):
                         - variables['q_tot_ramp_down'][p][t] * parameters['C_tot_ramp_down'][plant, 'Single input']
                         - variables['q_gg_ramp_up'][p][t] * parameters['C_gg_ramp_up'][plant, 'Single input']
                         - variables['q_gg_ramp_down'][p][t] * parameters['C_gg_ramp_down'][plant, 'Single input']
-                        - variables['q_source'][p][t] * parameters['C_source'][plant, 'Single input']
-                        - variables['q_sink'][p][t] * parameters['C_sink'][plant, 'Single input'])
+                        # - variables['q_source'][p][t] * parameters['C_source'][plant, 'Single input']
+                        # - variables['q_sink'][p][t] * parameters['C_sink'][plant, 'Single input']
+                        )
 
     model.maximize(obj_fnc)
 
@@ -263,6 +277,9 @@ def build_and_run(inputs, milp=False):
         constraint_id_time.append('')
         constraints.append(model.add_linear_constraint(sum(variables['q_tot'][p][t] for t in range(len(inputs['time_horizon']))) == parameters['Q_tot_daily'][inputs['river_nodes'][p],'Single input']))
 
+    ###################################
+    ######## FLOWS BETWEEN NODES
+    ###################################
     # Add constraint for outflows from a node p
     for i in range(len(inputs['river_nodes'])):
         for t in range(len(inputs['time_horizon'])):
@@ -279,26 +296,25 @@ def build_and_run(inputs, milp=False):
             constraint_id_time.append(f'{inputs['time_horizon'][t]}')
             constraints.append(model.add_linear_constraint(variables['q_in_flow'][i][t] == sum(variables['q_flow'][j][i][t] for j in range(len(inputs['river_nodes'])))))
 
+    # Add constraints for hourly flows between nodes
+    for p in range(len(inputs['river_nodes'])):
+        for t in range(len(inputs['time_horizon'])):
+            constraint_id_main.append('Total hourly InFlows')
+            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+            constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+            constraints.append(model.add_linear_constraint(variables['q_gg'][p][t] + variables['q_bp'][p][t] + variables['q_tur'][p][t] ==
+                                                           variables['q_source'][p][t] + variables['q_in_flow'][p][t]))
+                                                            # variables['q_in_flow'][p][t]))
 
     # Add constraints for hourly flows between nodes
     for p in range(len(inputs['river_nodes'])):
         for t in range(len(inputs['time_horizon'])):
-            constraint_id_main.append('Total hourly inflows')
-            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
-            constraint_id_time.append(f'{inputs['time_horizon'][t]}')
-            # constraints.append(model.add_linear_constraint(variables['q_sink'][p][t] + variables['q_gg'][p][t] + variables['q_bp'][p][t] + variables['q_tur'][p][t] == variables['q_source'][p][t] + sum(parameters['River_topology_matrix'][inputs['river_topology'][rn],inputs['river_nodes'][p]]*variables['q_flow'][rn][t] for rn in range(len(inputs['river_topology'])))))
-            constraints.append(model.add_linear_constraint(variables['q_gg'][p][t] + variables['q_bp'][p][t] + variables['q_tur'][p][t] ==
-                                                           variables['q_sink'][p][t] + variables['q_in_flow'][p][t]))
-
-    # Add constraints for hourly flows between nodes
-    for p in range(len(inputs['river_nodes'])):
-        for t in range(len(inputs['time_horizon'])):
-            constraint_id_main.append('Total hourly inflows')
+            constraint_id_main.append('Total hourly OutFlows')
             constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
             constraint_id_time.append(f'{inputs['time_horizon'][t]}')
             constraints.append(model.add_linear_constraint(variables['q_gg'][p][t] + variables['q_bp'][p][t] + variables['q_tur'][p][t] ==
-                                                           variables['q_source'][p][t] + variables['q_out_flow'][p][t]))
-
+                                                           variables['q_sink'][p][t] + variables['q_out_flow'][p][t]))
+                                                           # variables['q_out_flow'][p][t]))
     ###################################
     ######## CYCLIC CONDITIONS
     ###################################
@@ -472,6 +488,7 @@ def build_and_run(inputs, milp=False):
                 constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
                 constraint_id_time.append(f'{inputs['time_horizon'][t]}')
                 constraints.append(model.add_linear_constraint(variables['q_gg'][p][prev_t] - variables['q_gg'][p][t] <= variables['q_gg_ramp_down'][p][t]))
+
     ###################################
     ######## POWER BALANCE
     ###################################
@@ -496,14 +513,111 @@ def build_and_run(inputs, milp=False):
     ###################################
     ######## TEMPERATURE
     ###################################
+    # Add constraint for convex hull
+    for j in range(0, 4):
+        for p in range(len(inputs['river_nodes'])):
+            plant = inputs['river_nodes'][p]
+            for t in range(len(inputs['time_horizon'])):
+                constraint_id_main.append('Hull constraint: Surface' + str(j) + ' for ' + gauges_hulls[plant].label)
+                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+                if gauges_hulls[plant].inequality_signs[j] == '<=':
+                    constraints.append(
+                        model.add_linear_constraint(gauges_hulls[plant].plane_equations[j][0] * variables['q_gg'][p][t] +
+                                   gauges_hulls[plant].plane_equations[j][1] * variables['T_gg'][p][t] +
+                                   gauges_hulls[plant].plane_equations[j][2] * variables['X'][p][t] <=
+                                   gauges_hulls[plant].plane_equations[j][3]))
+                if gauges_hulls[plant].inequality_signs[j] == '>=':
+                    constraints.append(
+                        model.add_linear_constraint(gauges_hulls[plant].plane_equations[j][0] * variables['q_gg'][p][t] +
+                                   gauges_hulls[plant].plane_equations[j][1] * variables['T_gg'][p][t] +
+                                   gauges_hulls[plant].plane_equations[j][2] * variables['X'][p][t] >=
+                                   gauges_hulls[plant].plane_equations[j][3]))
 
+    # Add constraint for maximum hourly temperature limit on the outflow side
+    for p in range(len(inputs['river_nodes'])):
+        plant = inputs['river_nodes'][p]
+        for t in range(len(inputs['time_horizon'])):
+            time = inputs['time_horizon'][t]
+            constraint_id_main.append('Maximum hourly temperature (OutFlow)')
+            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+            constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+            constraints.append(model.add_linear_constraint(variables['q_tur'][p][t]*parameters['T_tur'][plant,time] + variables['q_bp'][p][t]*parameters['T_bp'][plant,time] + variables['X'][p][t] <= variables['q_sink'][p][t]*parameters['T_sink_hourly_max'][inputs['river_nodes'][p],time] + sum((parameters['T_gg_hourly_max'][inputs['river_nodes'][j],time]-parameters['dT_hourly'][inputs['river_nodes'][p],inputs['river_nodes'][j],time])*variables['q_flow'][p][j][t] for j in range(len(inputs['river_nodes']))),
+                                                               name = f'Maximum hourly temperature (OutFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
+                                                               ))
+
+    # Add constraint for minimum hourly temperature limit on the outflow side
+    for p in range(len(inputs['river_nodes'])):
+        plant = inputs['river_nodes'][p]
+        for t in range(len(inputs['time_horizon'])):
+            time = inputs['time_horizon'][t]
+            constraint_id_main.append('Minimum hourly temperature (OutFlow)')
+            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+            constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+            constraints.append(model.add_linear_constraint(variables['q_tur'][p][t]*parameters['T_tur'][plant,time] + variables['q_bp'][p][t]*parameters['T_bp'][plant,time] + variables['X'][p][t] >= variables['q_sink'][p][t]*parameters['T_sink_hourly_min'][inputs['river_nodes'][p],time] + sum((parameters['T_gg_hourly_min'][inputs['river_nodes'][j],time]-parameters['dT_hourly'][inputs['river_nodes'][p],inputs['river_nodes'][j],time])*variables['q_flow'][p][j][t] for j in range(len(inputs['river_nodes']))),
+                                                               name = f'Minimum hourly temperature (OutFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
+                                                               ))
+
+    # Add constraint for maximum hourly temperature limit on the inflow side
+    for p in range(len(inputs['river_nodes'])):
+        plant = inputs['river_nodes'][p]
+        for t in range(len(inputs['time_horizon'])):
+            time = inputs['time_horizon'][t]
+            constraint_id_main.append('Maximum hourly temperature (InFlow)')
+            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+            constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+            if plant in inputs['gauges']:
+                constraints.append(model.add_linear_constraint(variables['X'][p][t] <= variables['q_source'][p][t]*parameters['T_source_hourly_max'][inputs['river_nodes'][p],time] + sum((parameters['T_gg_hourly_max'][inputs['river_nodes'][j],time]+parameters['dT_hourly'][inputs['river_nodes'][j],inputs['river_nodes'][p],time])*variables['q_flow'][j][p][t] for j in range(len(inputs['river_nodes']))),
+                                                               name = f'Maximum hourly temperature (InFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
+                                                               ))
+
+    # Add constraint for minimum hourly temperature limit on the inflow side
+    for p in range(len(inputs['river_nodes'])):
+        plant = inputs['river_nodes'][p]
+        for t in range(len(inputs['time_horizon'])):
+            time = inputs['time_horizon'][t]
+            constraint_id_main.append('Minimum hourly temperature (InFlow)')
+            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+            constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+            if plant in inputs['gauges']:
+                constraints.append(model.add_linear_constraint(variables['X'][p][t] >= variables['q_source'][p][t]*parameters['T_source_hourly_min'][inputs['river_nodes'][p],time] + sum((parameters['T_gg_hourly_min'][inputs['river_nodes'][j],time]+parameters['dT_hourly'][inputs['river_nodes'][j],inputs['river_nodes'][p],time])*variables['q_flow'][j][p][t] for j in range(len(inputs['river_nodes']))),
+                                                               name=f'Minimum hourly temperature (InFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
+                                                               ))
+
+    # Add constraint for maximum daily temperature limit on the outflow side
+    for p in range(len(inputs['river_nodes'])):
+        plant = inputs['river_nodes'][p]
+        # time = inputs['time_horizon'][t]
+        constraint_id_main.append('Maximum daily average temperature (OutFlow)')
+        constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+        constraint_id_time.append('')
+        constraints.append(model.add_linear_constraint(sum(variables['q_tur'][p][t]*parameters['T_tur'][plant,time] + variables['q_bp'][p][t]*parameters['T_bp'][plant,time] + variables['X'][p][t] for t in range(len(inputs['time_horizon']))) <= parameters['T_gg_daily'][inputs['river_nodes'][p], 'Single input'] * sum(variables['q_sink'][p][t] for t in range(len(inputs['time_horizon']))) + sum((parameters['T_gg_daily'][inputs['river_nodes'][j], 'Single input'] - parameters['dT_daily'][inputs['river_nodes'][p],inputs['river_nodes'][j]])*sum(variables['q_flow'][p][j][t] for t in range(len(inputs['time_horizon']))) for j in range(len(inputs['river_nodes']))),
+                                                           name = f'Maximum daily average temperature (OutFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
+                                                           ))
 
     params = mathopt.SolveParameters(enable_output=True)
     result = mathopt.solve(model, mathopt.SolverType.GLOP, params=params)
     assert result.termination.reason == mathopt.TerminationReason.OPTIMAL
-    results = result.variable_values()
+    # results = result.variable_values()
     duals = result.dual_values()
 
+    results = {}
+    for var in ['q_tot_min']:
+        results[var] = pd.DataFrame(result.variable_values(variables[var]),index=inputs['river_nodes'])
+    for var in ['p_tur', 'q_bp', 'q_tur', 'q_tot', 'q_gg', 'q_source', 'q_sink', 'q_in_flow', 'q_out_flow', 'X', 'T_gg', 'q_bp_ramp_up', 'q_bp_ramp_down', 'q_tur_ramp_up', 'q_tur_ramp_down', 'q_tot_ramp_up', 'q_tot_ramp_down', 'q_gg_ramp_up', 'q_gg_ramp_down']:
+        results[var] = {}
+        for p in range(len(inputs['river_nodes'])):
+            results[var][inputs['river_nodes'][p]] = result.variable_values(variables[var][p])
+        results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])
+    for var in ['q_flow']:
+        results[var] = {}
+        for i in range(len(inputs['river_nodes'])):
+            for j in range(len(inputs['river_nodes'])):
+                results[var][inputs['river_nodes'][i],inputs['river_nodes'][j]] = result.variable_values(variables[var][i][j])
+        results[var] = {f"{k[0]} - {k[1]}": v for k, v in results[var].items()}
+        results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])
+    results['T_avg_daily'] = (results['q_bp']*inputs['T_bp_values'].T + results['q_tur']*inputs['T_tur_values'].T + results['X']).sum()/(results['q_bp']+ results['q_tur'] + results['q_gg']).sum()
+    results['T_plant'] = (results['q_bp']*inputs['T_bp_values'].T + results['q_tur']*inputs['T_tur_values'].T + results['X'])/(results['q_bp']+ results['q_tur'] + results['q_gg'])
     return inputs, results, duals
 
 

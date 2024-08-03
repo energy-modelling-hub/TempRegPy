@@ -16,6 +16,12 @@ class HullComputation:
         self.hull, self.plane_equations, self.inequality_signs, self.simplex_centroids = self.compute_hull_and_planes()
 
     def compute_hull_and_planes(self):
+        if (self.points.shape[0] < 4 or
+                np.all(self.points == self.points[0]) or
+                np.array_equal(self.points[0], self.points[1]) or
+                np.array_equal(self.points[2], self.points[3])):
+            return self.handle_degenerate_case()
+
         hull = ConvexHull(self.points)
         plane_equations = []
         inequality_signs = []
@@ -41,11 +47,54 @@ class HullComputation:
 
         return hull, plane_equations, inequality_signs, simplex_centroids
 
+    def handle_degenerate_case(self):
+        centroid = np.mean(self.points, axis=0)
+        return None, [(1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (1, 1, 1, 0)], ["<=", "<=", "<=", "<="], [centroid] * 4
+        # if len(np.unique(self.points, axis=0)) == 1:
+        #     # All points are the same
+        #     return None, [(1, 0, 0, 0), (0, 1, 0, 0), (0, 0, 1, 0), (1, 1, 1, 0)], ["<=", "<=", "<=", "<="], [centroid] * 4
+        #
+        # plane_equations = []
+        # inequality_signs = []
+        # for i in range(4):
+        #     plane_equations.append((1, 0, 0, 0))
+        #     inequality_signs.append("<=")
+        # plane_equations[1] = (-1, 0, 0, 0)
+        # inequality_signs[1] = ">="
+        # plane_equations[2] = (0, 1, 0, 0)
+        # inequality_signs[2] = "<="
+        # plane_equations[3] = (0, -1, 0, 0)
+        # inequality_signs[3] = ">="
+        #
+        # return None, plane_equations, inequality_signs, [centroid] * 4
+
     def print_plane_equations(self):
         label = self.label
         logger.info(f"Plane Equations for {label}:")
         for i, ((a, b, c, d), sign) in enumerate(zip(self.plane_equations, self.inequality_signs)):
             logger.info(f"Plane {i}: {a:.3f}x + {b:.3f}y + {c:.3f}z {sign} {d:.3f}")
+
+def gauge_hulls(inputs, rd):
+    x = np.linspace(inputs['Q_hulls'].loc[rd, 'Qmin'], inputs['Q_hulls'].loc[rd, 'Qmax'], 2)
+    y = np.linspace(inputs['Q_hulls'].loc[rd, 'Tmin'], inputs['Q_hulls'].loc[rd, 'Tmax'], 2)
+    X, Y = np.meshgrid(x, y)
+    Z = X * Y
+
+    points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
+    hull_computation = HullComputation(points, rd)
+    hull_computation.print_plane_equations()
+    return hull_computation
+
+def gauge_hulls(inputs, rd):
+    x = np.linspace(inputs['Q_hulls'].loc[rd, 'Qmin'], inputs['Q_hulls'].loc[rd, 'Qmax'], 2)
+    y = np.linspace(inputs['Q_hulls'].loc[rd, 'Tmin'], inputs['Q_hulls'].loc[rd, 'Tmax'], 2)
+    X, Y = np.meshgrid(x, y)
+    Z = X * Y
+
+    points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
+    hull_computation = HullComputation(points, rd)
+    hull_computation.print_plane_equations()
+    return hull_computation
 
 
 class DataGenerator:
@@ -180,16 +229,16 @@ def initialize_inputs_with_index(keys, config, par_name, columns, inputs, index_
         else:
             log_error(key)
 
-def initialize_inputs_with_conversion(keys_with_conversion, config, par_name, columns, inputs, index_key):
+def initialize_inputs_with_conversion(keys_with_conversion, config, par_name, columns, inputs, index_key, default_value=0):
     for key, factor in keys_with_conversion.items():
         if key in config[par_name].values:
-            inputs[key] = config.loc[config[par_name] == key, columns].set_index('Name').reindex(inputs[index_key]).infer_objects(copy=False).fillna(0) * factor
+            inputs[key] = config.loc[config[par_name] == key, columns].set_index('Name').reindex(inputs[index_key]).infer_objects(copy=False).fillna(default_value) * factor
         else:
             log_error(key)
             inputs[key] = pd.DataFrame()
 
 def log_error(key):
-    logger.error('There is no such key {}'.format(key))
+    logger.error(f'There is no such key {key}')
 
 
 def load_config(file_path):
@@ -274,6 +323,10 @@ def load_config(file_path):
             river_connection_hourly_keys = {
                 'Flow_i_j_max': cfs_to_af,
                 'Flow_i_j_min': cfs_to_af,
+                'T_source_hourly_max_values': 1,
+                'T_source_hourly_min_values': 1,
+                'T_sink_hourly_max_values': 1,
+                'T_sink_hourly_min_values': 1,
             }
             initialize_inputs_with_conversion(river_connection_hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'river_topology')
 
@@ -285,11 +338,18 @@ def load_config(file_path):
                 'T_ramp_up_delta', 'T_ramp_down_delta', 'T_gauge_daily'
             ]
             initialize_inputs_with_index(gauge_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes', 0)
-            gauge_hourly_keys = [
-                'T_gauge_hourly_max_values', 'T_gauge_hourly_min_values'
+            gauge_hourly_min_keys = [
+                'T_gauge_hourly_min_values'
             ]
-            initialize_inputs_with_index(gauge_hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'river_nodes', 0)
+            initialize_inputs_with_index(gauge_hourly_min_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'gauges', 0)
 
+            gauge_hourly_max_keys = [
+                'T_gauge_hourly_max_values'
+            ]
+            initialize_inputs_with_index(gauge_hourly_max_keys, config, par_name, ['Name'] + inputs['time_horizon'], inputs, 'gauges', 25)
+
+            inputs['T_gauge_hourly_min_values'] = inputs['T_gauge_hourly_min_values'].reindex(inputs['river_nodes'], fill_value=0)
+            inputs['T_gauge_hourly_max_values'] = inputs['T_gauge_hourly_max_values'].reindex(inputs['river_nodes'], fill_value=25)
             #################################
             # Process node related input data
             #################################
@@ -369,6 +429,15 @@ def load_config(file_path):
             inputs['C_sink'].loc[inputs['sinks']] = 0
             inputs['Q_sink_max'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=['Single input'])
             inputs['Q_sink_max'].loc[inputs['sinks']] = 10000
+            inputs['Q_hulls'] = pd.DataFrame(index=inputs['river_nodes'], columns=['Qmin', 'Qmax', 'Tmin', 'Tmax'])
+            inputs['Q_hulls'].loc[:, 'Qmin'] = inputs['Q_gg_min_values'].min(axis=1)
+            inputs['Q_hulls'].loc[:, 'Qmax'] = inputs['Q_gg_max_values'].max(axis=1)
+            inputs['Q_hulls'].loc[:, 'Tmin'] = inputs['T_gauge_hourly_min_values'].min(axis=1)
+            inputs['Q_hulls'].loc[:, 'Tmax'] = inputs['T_gauge_hourly_max_values'].max(axis=1)
+            inputs['Q_hulls'].loc[:, 'Qin_min'] = 0
+            inputs['Q_hulls'].loc[:, 'Qin_max'] = inputs['Q_source_max'].max(axis=1)
+            inputs['Q_hulls'].loc[:, 'Tin_min'] = inputs['T_source_hourly_min_values'].min(axis=1)
+            inputs['Q_hulls'].loc[:, 'Tin_max'] = inputs['T_source_hourly_max_values'].max(axis=1)
 
             return inputs
         except Exception as e:
