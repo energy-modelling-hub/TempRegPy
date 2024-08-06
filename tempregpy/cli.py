@@ -4,7 +4,7 @@ import typer
 
 from tempregpy import __appname__, __version__
 from .functions import *
-from .build_pywraplp import *
+from .build_mathopt import *
 
 app = typer.Typer(help="Build and run the TempRegPy model according to a specific config excel file.")
 

@@ -3,15 +3,15 @@ import numpy as np
 from .logging_config import *
 
 
-def plot_dispatch(df_dispatch, df_lmp, save_fig=False, fig_name=''):
+def plot_dispatch(df_dispatch, df_lmp, save_fig=False, fig_name='', unit_name=''):
     fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(12, 6), sharex=True)
 
     # Plot the stacked area chart on the primary y-axis of the first subplot
     df_dispatch.plot.area(ax=ax1, alpha=0.6)
 
     # Customizations for the primary y-axis
-    ax1.set_title('Turbine and Bypass Release', fontsize=15)
-    ax1.set_ylabel('CFS', fontsize=12)
+    ax1.set_title(f'Turbine and Bypass Release for {unit_name}', fontsize=15)
+    ax1.set_ylabel('Release (CFS)', fontsize=12)
 
     # Customize the x-ticks for the shared x-axis
     ax1.set_xticks(np.arange(0, len(df_dispatch.index)))
