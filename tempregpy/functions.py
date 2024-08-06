@@ -96,6 +96,17 @@ def gauge_hulls(inputs, rd):
     hull_computation.print_plane_equations()
     return hull_computation
 
+def gauge_hulls_time(inputs, rd, i):
+    x = np.linspace(inputs['Q_hulls'][i].loc[rd, 'Qmin'], inputs['Q_hulls'][i].loc[rd, 'Qmax'], 2)
+    y = np.linspace(inputs['Q_hulls'][i].loc[rd, 'Tmin'], inputs['Q_hulls'][i].loc[rd, 'Tmax'], 2)
+    X, Y = np.meshgrid(x, y)
+    Z = X * Y
+
+    points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
+    hull_computation = HullComputation(points, rd)
+    hull_computation.print_plane_equations()
+    return hull_computation
+
 
 class DataGenerator:
     def __init__(self, Q_tur_min, Q_tur_max, Q_bp_min, Q_bp_max, Q_tot_min, Q_tot_max):
@@ -277,7 +288,7 @@ def load_config(file_path):
             constraint_keys = [
                 'sim_folder', 'plt_show', 'cnstr_bp_ramp', 'cnstr_tur_ramp', 'cnstr_tot_ramp', 'cnstr_gg_ramp',
                 'cnstr_temp_t01t24', 'cnstr_bp_t01t24', 'cnstr_tur_t01t24', 'cnstr_tot_t01t24', 'cnstr_gg_t01t24',
-                'cnstr_oper_range', 'cnstr_temp_convex_hull'
+                'cnstr_oper_range', 'cnstr_temp_convex_hull', 'sim_type'
             ]
             # Loop through each key and extract the corresponding value
             for key in constraint_keys:
@@ -299,7 +310,10 @@ def load_config(file_path):
                 'Q_tot_ramp_down_max': cfs_to_af,
                 'Q_gg_ramp_up_max': cfs_to_af,
                 'Q_gg_ramp_down_max': cfs_to_af,
-                'WaterToPowerConversion': 1 / cfs_to_af
+                'WaterToPowerConversion': 1 / cfs_to_af,
+                'bp_ramp_down_cyc': 1,
+                'bp_ramp_up_cyc': 1,
+                'bp_ramp_tot_cyc': 1,
             }
             initialize_inputs_with_conversion(plant_keys_with_conversion, config, par_name, ['Name', input_type],
                                               inputs, 'river_nodes')
@@ -429,15 +443,22 @@ def load_config(file_path):
             inputs['C_sink'].loc[inputs['sinks']] = 0
             inputs['Q_sink_max'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=['Single input'])
             inputs['Q_sink_max'].loc[inputs['sinks']] = 10000
-            inputs['Q_hulls'] = pd.DataFrame(index=inputs['river_nodes'], columns=['Qmin', 'Qmax', 'Tmin', 'Tmax'])
-            inputs['Q_hulls'].loc[:, 'Qmin'] = inputs['Q_gg_min_values'].min(axis=1)
-            inputs['Q_hulls'].loc[:, 'Qmax'] = inputs['Q_gg_max_values'].max(axis=1)
-            inputs['Q_hulls'].loc[:, 'Tmin'] = inputs['T_gauge_hourly_min_values'].min(axis=1)
-            inputs['Q_hulls'].loc[:, 'Tmax'] = inputs['T_gauge_hourly_max_values'].max(axis=1)
-            inputs['Q_hulls'].loc[:, 'Qin_min'] = 0
-            inputs['Q_hulls'].loc[:, 'Qin_max'] = inputs['Q_source_max'].max(axis=1)
-            inputs['Q_hulls'].loc[:, 'Tin_min'] = inputs['T_source_hourly_min_values'].min(axis=1)
-            inputs['Q_hulls'].loc[:, 'Tin_max'] = inputs['T_source_hourly_max_values'].max(axis=1)
+            inputs['Q_hulls'] = {}
+            for i in inputs['time_horizon']:
+                inputs['Q_hulls'][i] = pd.DataFrame(index=inputs['river_nodes'], columns=['Qmin', 'Qmax', 'Tmin', 'Tmax'])
+                inputs['Q_hulls'][i].loc[:, 'Qmin'] = inputs['Q_gg_min_values'][i]
+                inputs['Q_hulls'][i].loc[:, 'Qmax'] = inputs['Q_gg_max_values'][i]
+                inputs['Q_hulls'][i].loc[:, 'Tmin'] = inputs['T_gauge_hourly_min_values'][i]
+                inputs['Q_hulls'][i].loc[:, 'Tmax'] = inputs['T_gauge_hourly_max_values'][i]
+            # inputs['Q_hulls'] = pd.DataFrame(index=inputs['river_nodes'], columns=['Qmin', 'Qmax', 'Tmin', 'Tmax'])
+            # inputs['Q_hulls'].loc[:, 'Qmin'] = inputs['Q_gg_min_values'].min(axis=1)
+            # inputs['Q_hulls'].loc[:, 'Qmax'] = inputs['Q_gg_max_values'].max(axis=1)
+            # inputs['Q_hulls'].loc[:, 'Tmin'] = inputs['T_gauge_hourly_min_values'].min(axis=1)
+            # inputs['Q_hulls'].loc[:, 'Tmax'] = inputs['T_gauge_hourly_max_values'].max(axis=1)
+            # inputs['Q_hulls'].loc[:, 'Qin_min'] = 0
+            # inputs['Q_hulls'].loc[:, 'Qin_max'] = inputs['Q_source_max'].max(axis=1)
+            # inputs['Q_hulls'].loc[:, 'Tin_min'] = inputs['T_source_hourly_min_values'].min(axis=1)
+            # inputs['Q_hulls'].loc[:, 'Tin_max'] = inputs['T_source_hourly_max_values'].max(axis=1)
 
             return inputs
         except Exception as e:

@@ -2,7 +2,7 @@ name: tempregpy
 channels:
   - defaults
 dependencies:
-  - numpy
+  - numpy<2.0
   - pandas
   - matplotlib
   - openpyxl
@@ -10,5 +10,6 @@ dependencies:
   - colorlog
   - typer
   - pytest
+  - pip
   - pip:
     - ortools

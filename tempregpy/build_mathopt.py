@@ -13,8 +13,12 @@ def build_and_run(inputs, milp=False):
     ###### CONVEX HULLS
     #####################
     gauges_hulls = {}
+    # for rn in inputs['river_nodes']:
+    #     gauges_hulls[rn] = gauge_hulls(inputs, rn)
     for rn in inputs['river_nodes']:
-        gauges_hulls[rn] = gauge_hulls(inputs, rn)
+        gauges_hulls[rn] = {}
+        for i in inputs['time_horizon']:
+            gauges_hulls[rn][i] = gauge_hulls_time(inputs, rn, i)
         # inflows_hulls[rn] = inflow_hulls(inputs, rn)
 
     logger.info('Assigning parameters for optimization:')
@@ -92,7 +96,9 @@ def build_and_run(inputs, milp=False):
     parameters['Q_tot_daily'] = {(p, s): value for p, row in inputs['Q_tot_daily'].iterrows() for s, value in row.items()}
     parameters['Q_max_daily_change'] = {(p, s): value for p, row in inputs['Q_max_daily_change'].iterrows() for s, value in row.items()}
     parameters['WaterToPowerConversion'] = {(p, s): value for p, row in inputs['WaterToPowerConversion'].iterrows() for s, value in row.items()}
-
+    parameters['bp_ramp_up_cyc'] = {(p, s): value for p, row in inputs['bp_ramp_up_cyc'].iterrows() for s, value in row.items()}
+    parameters['bp_ramp_down_cyc'] = {(p, s): value for p, row in inputs['bp_ramp_down_cyc'].iterrows() for s, value in row.items()}
+    parameters['bp_ramp_tot_cyc'] = {(p, s): value for p, row in inputs['bp_ramp_tot_cyc'].iterrows() for s, value in row.items()}
 
     def log_sample_summary(logger, name, parameter_dict, sample_size=5):
         logger.debug(f"{name} assigned (sample): {list(parameter_dict.values())[:sample_size]} ... (total: {len(parameter_dict)})")
@@ -140,6 +146,8 @@ def build_and_run(inputs, milp=False):
     log_sample_summary(logger, 'Q_tot_daily', parameters['Q_tot_daily'])
     log_sample_summary(logger, 'Q_max_daily_change', parameters['Q_max_daily_change'])
     log_sample_summary(logger, 'WaterToPowerConversion', parameters['WaterToPowerConversion'])
+    log_sample_summary(logger, 'bp_ramp_up_cyc', parameters['bp_ramp_up_cyc'])
+    log_sample_summary(logger, 'bp_ramp_down_cyc', parameters['bp_ramp_down_cyc'])
 
     model = mathopt.Model(name="By-Pass Optimization")
 
@@ -154,7 +162,7 @@ def build_and_run(inputs, milp=False):
                                               ub=parameters['P_tur_max'][p, t],
                                               name=f'p_tur_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
                          ]
-    variables['q_bp'] = [[model.add_variable(lb=parameters['Q_bp_min'][p, t],
+    variables['q_bp'] = [[model.add_variable(lb=0,
                                              ub=parameters['Q_bp_max'][p, t],
                                              name=f'q_bp_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
                          ]
@@ -230,10 +238,22 @@ def build_and_run(inputs, milp=False):
                                                        ub=parameters['Q_gg_ramp_down_max'][p, 'Single input'],
                                                        name=f'q_gg_ramp_down_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
                          ]
+    if inputs['sim_type'] == 'MILP':
+        variables['q_bp_rr_up_change'] = [[model.add_binary_variable(name=f'q_bp_rr_up_change_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
+                                         ]
+        variables['q_bp_rr_down_change'] = [[model.add_binary_variable(name=f'q_bp_rr_down_change_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
+                                           ]
+        variables['q_bp_committed'] = [[model.add_binary_variable(name=f'q_bp_committed_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
+                                           ]
+        variables['q_tur_committed'] = [[model.add_binary_variable(name=f'q_tur_committed_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
+                                           ]
+
     logger.info(f"Optimization variables sucesfully created. {list(variables)}")
 
+    ###################################
+    ######## OBJECTIVE FUNCTION
+    ###################################
     obj_fnc = mathopt.LinearExpression()
-    # Add constraints for total hourly release
     for p in range(len(inputs['river_nodes'])):
         plant = inputs['river_nodes'][p]
         for t in range(len(inputs['time_horizon'])):
@@ -252,6 +272,7 @@ def build_and_run(inputs, milp=False):
                         )
 
     model.maximize(obj_fnc)
+    # model.minimize(obj_fnc)
 
     # Constraints
     constraints = []
@@ -276,6 +297,63 @@ def build_and_run(inputs, milp=False):
         constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
         constraint_id_time.append('')
         constraints.append(model.add_linear_constraint(sum(variables['q_tot'][p][t] for t in range(len(inputs['time_horizon']))) == parameters['Q_tot_daily'][inputs['river_nodes'][p],'Single input']))
+
+
+    ###################################
+    ######## BINARY VARIABLES
+    ###################################
+    if inputs['sim_type'] == 'MILP':
+        for p in range(len(inputs['river_nodes'])):
+            for t in range(len(inputs['time_horizon'])):
+                constraint_id_main.append('Hourly bypass ramp up change status upper bound')
+                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+                constraints.append(model.add_linear_constraint(variables['q_bp_ramp_up'][p][t] <= variables['q_bp_rr_up_change'][p][t]*parameters['Q_bp_ramp_up_max'][inputs['river_nodes'][p], 'Single input'],
+                                                               name=f'q_bp_rr_up_change UB for {p} at {t}'))
+
+        for p in range(len(inputs['river_nodes'])):
+            constraint_id_main.append('Daily bypass ramp up change limit')
+            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+            constraint_id_time.append('')
+            constraints.append(model.add_linear_constraint(parameters['bp_ramp_up_cyc'][inputs['river_nodes'][p], 'Single input'] >= sum(variables['q_bp_rr_up_change'][p][t] for t in range(len(inputs['time_horizon']))),
+                                                           name=f'q_bp_rr_up_change UB for {p}'))
+
+        for p in range(len(inputs['river_nodes'])):
+            for t in range(len(inputs['time_horizon'])):
+                constraint_id_main.append('Hourly bypass ramp down change status upper bound')
+                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+                constraints.append(model.add_linear_constraint(variables['q_bp_ramp_down'][p][t] <= variables['q_bp_rr_down_change'][p][t]*parameters['Q_bp_ramp_down_max'][inputs['river_nodes'][p], 'Single input'],
+                                                               name=f'q_bp_rr_down_change UB for {p} at {t}'))
+
+        for p in range(len(inputs['river_nodes'])):
+            constraint_id_main.append('Daily bypass ramp down change limit')
+            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+            constraint_id_time.append('')
+            constraints.append(model.add_linear_constraint(parameters['bp_ramp_down_cyc'][inputs['river_nodes'][p], 'Single input'] >= sum(variables['q_bp_rr_down_change'][p][t] for t in range(len(inputs['time_horizon']))),
+                                                           name=f'q_bp_rr_down_change UB for {p}'))
+
+        for p in range(len(inputs['river_nodes'])):
+            for t in range(len(inputs['time_horizon'])):
+                constraint_id_main.append('Bypass committed status upper bound')
+                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+                constraints.append(model.add_linear_constraint(variables['q_bp_committed'][p][t]*parameters['Q_bp_max'][inputs['river_nodes'][p],inputs['time_horizon'][t]] >= variables['q_bp'][p][t]))
+
+        for p in range(len(inputs['river_nodes'])):
+            for t in range(len(inputs['time_horizon'])):
+                constraint_id_main.append('Bypass committed status lower bound')
+                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+                constraints.append(model.add_linear_constraint(variables['q_bp_committed'][p][t]*parameters['Q_bp_min'][inputs['river_nodes'][p],inputs['time_horizon'][t]] <= variables['q_bp'][p][t]))
+
+
+        for p in range(len(inputs['river_nodes'])):
+            constraint_id_main.append('Daily bypass ramp total change limit')
+            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+            constraint_id_time.append('')
+            constraints.append(model.add_linear_constraint(parameters['bp_ramp_tot_cyc'][inputs['river_nodes'][p], 'Single input'] >= sum(variables['q_bp_rr_up_change'][p][t] + variables['q_bp_rr_down_change'][p][t] for t in range(len(inputs['time_horizon']))),
+                                                           name=f'q_bp_rr_total_change UB for {p}'))
 
     ###################################
     ######## FLOWS BETWEEN NODES
@@ -514,25 +592,46 @@ def build_and_run(inputs, milp=False):
     ######## TEMPERATURE
     ###################################
     # Add constraint for convex hull
+    # for j in range(0, 4):
+    #     for p in range(len(inputs['river_nodes'])):
+    #         plant = inputs['river_nodes'][p]
+    #         for t in range(len(inputs['time_horizon'])):
+    #             constraint_id_main.append('Hull constraint: Surface' + str(j) + ' for ' + gauges_hulls[plant].label)
+    #             constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+    #             constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+    #             if gauges_hulls[plant].inequality_signs[j] == '<=':
+    #                 constraints.append(
+    #                     model.add_linear_constraint(gauges_hulls[plant].plane_equations[j][0] * variables['q_gg'][p][t] +
+    #                                gauges_hulls[plant].plane_equations[j][1] * variables['T_gg'][p][t] +
+    #                                gauges_hulls[plant].plane_equations[j][2] * variables['X'][p][t] <=
+    #                                gauges_hulls[plant].plane_equations[j][3]))
+    #             if gauges_hulls[plant].inequality_signs[j] == '>=':
+    #                 constraints.append(
+    #                     model.add_linear_constraint(gauges_hulls[plant].plane_equations[j][0] * variables['q_gg'][p][t] +
+    #                                gauges_hulls[plant].plane_equations[j][1] * variables['T_gg'][p][t] +
+    #                                gauges_hulls[plant].plane_equations[j][2] * variables['X'][p][t] >=
+    #                                gauges_hulls[plant].plane_equations[j][3]))
+
     for j in range(0, 4):
         for p in range(len(inputs['river_nodes'])):
             plant = inputs['river_nodes'][p]
             for t in range(len(inputs['time_horizon'])):
-                constraint_id_main.append('Hull constraint: Surface' + str(j) + ' for ' + gauges_hulls[plant].label)
+                time = inputs['time_horizon'][t]
+                constraint_id_main.append('Hull constraint: Surface' + str(j) + ' for ' + gauges_hulls[plant][time].label)
                 constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
                 constraint_id_time.append(f'{inputs['time_horizon'][t]}')
-                if gauges_hulls[plant].inequality_signs[j] == '<=':
+                if gauges_hulls[plant][time].inequality_signs[j] == '<=':
                     constraints.append(
-                        model.add_linear_constraint(gauges_hulls[plant].plane_equations[j][0] * variables['q_gg'][p][t] +
-                                   gauges_hulls[plant].plane_equations[j][1] * variables['T_gg'][p][t] +
-                                   gauges_hulls[plant].plane_equations[j][2] * variables['X'][p][t] <=
-                                   gauges_hulls[plant].plane_equations[j][3]))
-                if gauges_hulls[plant].inequality_signs[j] == '>=':
+                        model.add_linear_constraint(gauges_hulls[plant][time].plane_equations[j][0] * variables['q_gg'][p][t] +
+                                   gauges_hulls[plant][time].plane_equations[j][1] * variables['T_gg'][p][t] +
+                                   gauges_hulls[plant][time].plane_equations[j][2] * variables['X'][p][t] <=
+                                   gauges_hulls[plant][time].plane_equations[j][3]))
+                if gauges_hulls[plant][time].inequality_signs[j] == '>=':
                     constraints.append(
-                        model.add_linear_constraint(gauges_hulls[plant].plane_equations[j][0] * variables['q_gg'][p][t] +
-                                   gauges_hulls[plant].plane_equations[j][1] * variables['T_gg'][p][t] +
-                                   gauges_hulls[plant].plane_equations[j][2] * variables['X'][p][t] >=
-                                   gauges_hulls[plant].plane_equations[j][3]))
+                        model.add_linear_constraint(gauges_hulls[plant][time].plane_equations[j][0] * variables['q_gg'][p][t] +
+                                   gauges_hulls[plant][time].plane_equations[j][1] * variables['T_gg'][p][t] +
+                                   gauges_hulls[plant][time].plane_equations[j][2] * variables['X'][p][t] >=
+                                   gauges_hulls[plant][time].plane_equations[j][3]))
 
     # Add constraint for maximum hourly temperature limit on the outflow side
     for p in range(len(inputs['river_nodes'])):
@@ -596,29 +695,76 @@ def build_and_run(inputs, milp=False):
                                                            ))
 
     params = mathopt.SolveParameters(enable_output=True)
-    result = mathopt.solve(model, mathopt.SolverType.GLOP, params=params)
-    assert result.termination.reason == mathopt.TerminationReason.OPTIMAL
-    # results = result.variable_values()
-    duals = result.dual_values()
+    if inputs['sim_type'] == 'MILP':
+        result = mathopt.solve(model, mathopt.SolverType.GSCIP, params=params)
+        duals = None
+        assert result.termination.reason == mathopt.TerminationReason.OPTIMAL
+    else:
+        result = mathopt.solve(model, mathopt.SolverType.GLOP, params=params)
+        # duals = result.dual_values()
+        assert result.termination.reason == mathopt.TerminationReason.OPTIMAL
 
     results = {}
+    for var in ['Obj func']:
+        results[var] = pd.DataFrame([result.objective_value()])
     for var in ['q_tot_min']:
-        results[var] = pd.DataFrame(result.variable_values(variables[var]),index=inputs['river_nodes'])
-    for var in ['p_tur', 'q_bp', 'q_tur', 'q_tot', 'q_gg', 'q_source', 'q_sink', 'q_in_flow', 'q_out_flow', 'X', 'T_gg', 'q_bp_ramp_up', 'q_bp_ramp_down', 'q_tur_ramp_up', 'q_tur_ramp_down', 'q_tot_ramp_up', 'q_tot_ramp_down', 'q_gg_ramp_up', 'q_gg_ramp_down']:
+        results[var] = pd.DataFrame(result.variable_values(variables[var]),index=inputs['river_nodes'])/cfs_to_af
+    for var in ['q_bp', 'q_tur', 'q_tot', 'q_gg', 'q_source', 'q_sink', 'q_in_flow', 'q_out_flow', 'X', 'q_bp_ramp_up', 'q_bp_ramp_down', 'q_tur_ramp_up', 'q_tur_ramp_down', 'q_tot_ramp_up', 'q_tot_ramp_down', 'q_gg_ramp_up', 'q_gg_ramp_down']:
+        results[var] = {}
+        for p in range(len(inputs['river_nodes'])):
+            results[var][inputs['river_nodes'][p]] = result.variable_values(variables[var][p])
+        results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])/cfs_to_af
+    for var in ['p_tur', 'T_gg']:
         results[var] = {}
         for p in range(len(inputs['river_nodes'])):
             results[var][inputs['river_nodes'][p]] = result.variable_values(variables[var][p])
         results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])
+    if inputs['sim_type'] == 'MILP':
+        for var in ['q_bp_rr_up_change', 'q_bp_rr_down_change', 'q_bp_committed']:
+            results[var] = {}
+            for p in range(len(inputs['river_nodes'])):
+                results[var][inputs['river_nodes'][p]] = result.variable_values(variables[var][p])
+            results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])
     for var in ['q_flow']:
         results[var] = {}
         for i in range(len(inputs['river_nodes'])):
             for j in range(len(inputs['river_nodes'])):
                 results[var][inputs['river_nodes'][i],inputs['river_nodes'][j]] = result.variable_values(variables[var][i][j])
         results[var] = {f"{k[0]} - {k[1]}": v for k, v in results[var].items()}
-        results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])
-    results['T_avg_daily'] = (results['q_bp']*inputs['T_bp_values'].T + results['q_tur']*inputs['T_tur_values'].T + results['X']).sum()/(results['q_bp']+ results['q_tur'] + results['q_gg']).sum()
-    results['T_plant'] = (results['q_bp']*inputs['T_bp_values'].T + results['q_tur']*inputs['T_tur_values'].T + results['X'])/(results['q_bp']+ results['q_tur'] + results['q_gg'])
+        results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])/cfs_to_af
+    results['T_plant'] = (results['q_bp']*inputs['T_bp_values'].T + results['q_tur']*inputs['T_tur_values'].T)/(results['q_bp'] + results['q_tur'])
+
+    def compute_gauge_temperatures(T_plant_df, q_flow_df, dT_hourly_values_df):
+        T_results = pd.DataFrame(index=T_plant_df.index, columns=inputs['gauges'])
+
+        for time_interval in T_plant_df.index:
+            T_plant = T_plant_df.loc[time_interval].dropna().to_dict()
+            T_gauge = {gauge: None for gauge in inputs['gauges']}
+
+            for col in q_flow_df.columns:
+                from_node, to_node = col.split(' - ')
+                if from_node in T_plant:
+                    T_gauge[to_node] = T_plant[from_node] + dT_hourly_values_df.at['GCD - RM61', time_interval]
+
+            for gauge in inputs['gauges']:
+                T_results.at[time_interval, gauge] = T_gauge[gauge]
+
+        return T_results
+
+    T_gauge = compute_gauge_temperatures(results['T_plant'], results['q_flow'], inputs['dT_hourly_values'])
+    T_gauge.astype('float64')
+    results['T_plant'].astype('float64')
+    results['T_plant'].update(T_gauge)
+    results['T_avg_daily'] = results['T_plant'].mean()
     return inputs, results, duals
 
 
+# Function to compute gauge temperatures for each time interval
 
+
+
+# # Compute gauge temperatures for each time interval
+# T_results = compute_gauge_temperatures(results['T_plant'], results['q_flow'], inputs['dT_hourly_values'])
+#
+# # Print the results
+# print(T_results)
