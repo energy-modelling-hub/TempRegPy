@@ -2,6 +2,60 @@ import matplotlib.pyplot as plt
 import numpy as np
 from .logging_config import *
 
+
+def plot_dispatch(df_dispatch, df_lmp, save_fig=False, fig_name=''):
+    fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(12, 6), sharex=True)
+
+    # Plot the stacked area chart on the primary y-axis of the first subplot
+    df_dispatch.plot.area(ax=ax1, alpha=0.6)
+
+    # Customizations for the primary y-axis
+    ax1.set_title('Turbine and Bypass Release', fontsize=15)
+    ax1.set_ylabel('CFS', fontsize=12)
+
+    # Customize the x-ticks for the shared x-axis
+    ax1.set_xticks(np.arange(0, len(df_dispatch.index)))
+    ax1.set_xticklabels(df_dispatch.index)
+
+    # Grid for better visualization
+    ax1.grid(True, linestyle='--', alpha=0.5)
+
+    # Customize the colors for the area plot
+    # colors = ['#ff9999', '#66b3ff']
+    colors = ['#ff9999', '#66b3ff']
+    # Set colors for the area plot
+    for i, poly in enumerate(ax1.collections):
+        if i < len(colors):
+            poly.set_facecolor(colors[i])
+            poly.set_edgecolor(colors[i])
+            poly.set_alpha(0.6)
+
+    # Calculate the cumulative sum for the upper edges
+    cumulative = df_dispatch.cumsum(axis=1)
+    for i, color in enumerate(colors):
+        ax1.plot(cumulative.index, cumulative.iloc[:, i], color=color, linewidth=2)
+
+    # Create a secondary y-axis for the first subplot
+    ax2 = ax1.twinx()
+
+    # Plot df_lmp on the secondary y-axis of the first subplot without generating a legend
+    df_lmp.plot(ax=ax2, color='black', linewidth=2, legend=False)
+
+    # Customizations for the secondary y-axis
+    ax2.set_ylabel('LMP ($/MWh)', fontsize=12)
+
+    # Combine legends for the first subplot
+    lines1, labels1 = ax1.get_legend_handles_labels()
+    lines2, labels2 = ax2.get_legend_handles_labels()
+    ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left', fontsize=12, title='Categories', title_fontsize='14')
+
+    # Show plot
+    plt.tight_layout()
+    if save_fig is True:
+        plt.savefig(fig_name + '.png', dpi=300)
+        logger.info('Saved figure ' + fig_name + '.png')
+    plt.show()
+
 def plot_temperature_analysis(df_dispatch, df_t, df_lmp, save_fig=False, fig_name=''):
     # Define the plot with subplots
     fig, (ax1, ax3, ax4) = plt.subplots(nrows=3, ncols=1, figsize=(12, 15), sharex=True)

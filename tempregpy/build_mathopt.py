@@ -701,70 +701,147 @@ def build_and_run(inputs, milp=False):
         assert result.termination.reason == mathopt.TerminationReason.OPTIMAL
     else:
         result = mathopt.solve(model, mathopt.SolverType.GLOP, params=params)
-        # duals = result.dual_values()
+        duals = result.dual_values()
         assert result.termination.reason == mathopt.TerminationReason.OPTIMAL
 
-    results = {}
-    for var in ['Obj func']:
-        results[var] = pd.DataFrame([result.objective_value()])
-    for var in ['q_tot_min']:
-        results[var] = pd.DataFrame(result.variable_values(variables[var]),index=inputs['river_nodes'])/cfs_to_af
-    for var in ['q_bp', 'q_tur', 'q_tot', 'q_gg', 'q_source', 'q_sink', 'q_in_flow', 'q_out_flow', 'X', 'q_bp_ramp_up', 'q_bp_ramp_down', 'q_tur_ramp_up', 'q_tur_ramp_down', 'q_tot_ramp_up', 'q_tot_ramp_down', 'q_gg_ramp_up', 'q_gg_ramp_down']:
-        results[var] = {}
-        for p in range(len(inputs['river_nodes'])):
-            results[var][inputs['river_nodes'][p]] = result.variable_values(variables[var][p])
-        results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])/cfs_to_af
-    for var in ['p_tur', 'T_gg']:
-        results[var] = {}
-        for p in range(len(inputs['river_nodes'])):
-            results[var][inputs['river_nodes'][p]] = result.variable_values(variables[var][p])
-        results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])
-    if inputs['sim_type'] == 'MILP':
-        for var in ['q_bp_rr_up_change', 'q_bp_rr_down_change', 'q_bp_committed']:
-            results[var] = {}
-            for p in range(len(inputs['river_nodes'])):
-                results[var][inputs['river_nodes'][p]] = result.variable_values(variables[var][p])
-            results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])
-    for var in ['q_flow']:
-        results[var] = {}
-        for i in range(len(inputs['river_nodes'])):
-            for j in range(len(inputs['river_nodes'])):
-                results[var][inputs['river_nodes'][i],inputs['river_nodes'][j]] = result.variable_values(variables[var][i][j])
-        results[var] = {f"{k[0]} - {k[1]}": v for k, v in results[var].items()}
-        results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])/cfs_to_af
-    results['T_plant'] = (results['q_bp']*inputs['T_bp_values'].T + results['q_tur']*inputs['T_tur_values'].T)/(results['q_bp'] + results['q_tur'])
+    # Determine the directory where the Excel file is located
+    base_directory = os.path.dirname(inputs['file_path'])
 
-    def compute_gauge_temperatures(T_plant_df, q_flow_df, dT_hourly_values_df):
-        T_results = pd.DataFrame(index=T_plant_df.index, columns=inputs['gauges'])
+    # Create the "results" folder in the same directory as the Excel file
+    results_folder_path = os.path.join(base_directory, 'Results')
+    os.makedirs(results_folder_path, exist_ok=True)
 
-        for time_interval in T_plant_df.index:
-            T_plant = T_plant_df.loc[time_interval].dropna().to_dict()
-            T_gauge = {gauge: None for gauge in inputs['gauges']}
+    # Create the simulation folder inside the "results" folder
+    simulation_folder_path = os.path.join(results_folder_path, inputs['sim_folder'])
 
-            for col in q_flow_df.columns:
-                from_node, to_node = col.split(' - ')
-                if from_node in T_plant:
-                    T_gauge[to_node] = T_plant[from_node] + dT_hourly_values_df.at['GCD - RM61', time_interval]
+    # Check if the folder already exists
+    if os.path.exists(simulation_folder_path):
+        logger.warning("The existing simulation will be overwritten.")
+    else:
+        # Create the folder
+        try:
+            os.makedirs(simulation_folder_path)
+            logger.info(f"The folder '{simulation_folder_path}' was successfully created.")
+        except Exception as e:
+            logger.error(f"Unable to create the folder '{simulation_folder_path}'. Encountered error: {e}. "
+                         f"Please check your permissions and ensure the path is correct.")
+            sys.exit(1)
 
-            for gauge in inputs['gauges']:
-                T_results.at[time_interval, gauge] = T_gauge[gauge]
+    status = result.termination.reason
+    # Log solver status
+    if status == result.termination.reason.OPTIMAL:
+        logger.info("Optimization successful: Found optimal solution.")
+    elif status == result.termination.reason.FEASIBLE:
+        logger.info("Optimization terminated: Found feasible solution.")
+    elif status == result.termination.reason.INFEASIBLE:
+        logger.warning("Optimization terminated: Problem is infeasible.")
+    elif status == result.termination.reason.NO_SOLUTION_FOUND:
+        logger.warning("Optimization not solved: No solution found.")
+    else:
+        logger.error("Optimization failed: Solver encountered an error.")
 
-        return T_results
+    try:
+        if (status == result.termination.reason.OPTIMAL) or (status == result.termination.reason.FEASIBLE):
+            results = {}
+            for var in ['Obj func']:
+                results[var] = pd.DataFrame([result.objective_value()])
+            for var in ['q_tot_min']:
+                results[var] = pd.DataFrame(result.variable_values(variables[var]),index=inputs['river_nodes'])/cfs_to_af
+            for var in ['q_bp', 'q_tur', 'q_tot', 'q_gg', 'q_source', 'q_sink', 'q_in_flow', 'q_out_flow', 'X', 'q_bp_ramp_up', 'q_bp_ramp_down', 'q_tur_ramp_up', 'q_tur_ramp_down', 'q_tot_ramp_up', 'q_tot_ramp_down', 'q_gg_ramp_up', 'q_gg_ramp_down']:
+                results[var] = {}
+                for p in range(len(inputs['river_nodes'])):
+                    results[var][inputs['river_nodes'][p]] = result.variable_values(variables[var][p])
+                results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])/cfs_to_af
+            for var in ['p_tur', 'T_gg']:
+                results[var] = {}
+                for p in range(len(inputs['river_nodes'])):
+                    results[var][inputs['river_nodes'][p]] = result.variable_values(variables[var][p])
+                results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])
+            if inputs['sim_type'] == 'MILP':
+                for var in ['q_bp_rr_up_change', 'q_bp_rr_down_change', 'q_bp_committed']:
+                    results[var] = {}
+                    for p in range(len(inputs['river_nodes'])):
+                        results[var][inputs['river_nodes'][p]] = result.variable_values(variables[var][p])
+                    results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])
+            for var in ['q_flow']:
+                results[var] = {}
+                for i in range(len(inputs['river_nodes'])):
+                    for j in range(len(inputs['river_nodes'])):
+                        results[var][inputs['river_nodes'][i],inputs['river_nodes'][j]] = result.variable_values(variables[var][i][j])
+                results[var] = {f"{k[0]} - {k[1]}": v for k, v in results[var].items()}
+                results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])/cfs_to_af
+            results['T_plant'] = (results['q_bp']*inputs['T_bp_values'].T + results['q_tur']*inputs['T_tur_values'].T)/(results['q_bp'] + results['q_tur'])
 
-    T_gauge = compute_gauge_temperatures(results['T_plant'], results['q_flow'], inputs['dT_hourly_values'])
-    T_gauge.astype('float64')
-    results['T_plant'].astype('float64')
-    results['T_plant'].update(T_gauge)
-    results['T_avg_daily'] = results['T_plant'].mean()
-    return inputs, results, duals
+            def compute_gauge_temperatures(T_plant_df, q_flow_df, dT_hourly_values_df):
+                T_results = pd.DataFrame(index=T_plant_df.index, columns=inputs['gauges'])
 
+                for time_interval in T_plant_df.index:
+                    T_plant = T_plant_df.loc[time_interval].dropna().to_dict()
+                    T_gauge = {gauge: None for gauge in inputs['gauges']}
 
-# Function to compute gauge temperatures for each time interval
+                    for col in q_flow_df.columns:
+                        from_node, to_node = col.split(' - ')
+                        if from_node in T_plant:
+                            T_gauge[to_node] = T_plant[from_node] + dT_hourly_values_df.at['GCD - RM61', time_interval]
 
+                    for gauge in inputs['gauges']:
+                        T_results.at[time_interval, gauge] = T_gauge[gauge]
 
+                return T_results
 
-# # Compute gauge temperatures for each time interval
-# T_results = compute_gauge_temperatures(results['T_plant'], results['q_flow'], inputs['dT_hourly_values'])
-#
-# # Print the results
-# print(T_results)
+            T_gauge = compute_gauge_temperatures(results['T_plant'], results['q_flow'], inputs['dT_hourly_values'])
+            T_gauge.astype('float64')
+            results['T_plant'].astype('float64')
+            results['T_plant'].update(T_gauge)
+            results['T_avg_daily'] = results['T_plant'].mean()
+
+            # Export results to a file
+            results_file_path = os.path.join(simulation_folder_path, 'optimization_results.txt')
+            try:
+                with open(results_file_path, 'w') as f:
+                    logger.info(f"Writing results to '{results_file_path}'...")
+                    f.write('Results:\n')
+
+                    for key, value in results.items():
+                        if isinstance(value, pd.DataFrame):
+                            f.write(f'{key}:\n{value.to_string()}\n\n')
+                        else:
+                            f.write(f'{key}: {value}\n')
+            except Exception as e:
+                logger.error(f"Unable to write results to the file '{results_file_path}'. Error encountered: {e}. "
+                             f"Please check file permissions and ensure the directory exists.")
+                sys.exit(1)
+
+            for key, value in results.items():
+                if isinstance(value, pd.DataFrame):
+                    value.to_csv(f'{simulation_folder_path + "\\"}{key}.csv', index=False)
+                else:
+                    with open(f'{simulation_folder_path + "\\"}{key}.csv', 'w') as f:
+                        f.write(str(value))
+
+            def get_LMP_values_for_plant(plant_name, plant_to_node, LMP_values):
+                # Generate the plant_node_mapping from plant_to_node
+                plant_node_mapping = {entry.split(' - ')[0]: entry.split(' - ')[1] for entry in plant_to_node}
+
+                # Get the node name for the given plant
+                node_name = plant_node_mapping.get(plant_name)
+                if node_name:
+                    return LMP_values.loc[node_name]
+                else:
+                    raise ValueError(f"Plant {plant_name} not found in the mapping.")
+
+            for unit_name in ['GCD']:
+                plot_data = pd.concat([results['q_bp'].loc[:, unit_name], results['q_tur'].loc[:, unit_name]], axis=1).set_axis(['q_bp', 'q_tur'], axis=1)
+                plot_data['LMP'] = get_LMP_values_for_plant(unit_name, inputs['plant_to_node'], inputs['LMP_values'])
+                plot_dispatch(plot_data[['q_bp','q_tur']], plot_data[['LMP']], save_fig=True, fig_name=simulation_folder_path + '\\plot')
+
+        else:
+            logger.error('The problem does not have an optimal solution. Please review and revise the input data.')
+
+        copy_file_to_destination('TempRegPy\\app.log', simulation_folder_path)
+
+        return inputs, results, duals
+
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}. The problem does not have an optimal solution. Please review "
+                     f"and revise the input data.")
