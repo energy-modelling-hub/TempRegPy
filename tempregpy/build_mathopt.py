@@ -830,7 +830,7 @@ def build_and_run(inputs, milp=False):
                 else:
                     raise ValueError(f"Plant {plant_name} not found in the mapping.")
 
-            for unit_name in ['GCD']:
+            for unit_name in inputs['plants']:
                 plot_data = pd.concat([results['q_bp'].loc[:, unit_name], results['q_tur'].loc[:, unit_name]], axis=1).set_axis(['q_bp', 'q_tur'], axis=1).clip(lower=0)
                 plot_data['LMP'] = get_LMP_values_for_plant(unit_name, inputs['plant_to_node'], inputs['LMP_values'])
                 plot_dispatch(plot_data[['q_bp','q_tur']], plot_data[['LMP']], save_fig=True, fig_name=simulation_folder_path + '\\plot', unit_name=unit_name)
