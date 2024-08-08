@@ -99,6 +99,7 @@ def build_and_run(inputs, milp=False):
     parameters['bp_ramp_up_cyc'] = {(p, s): value for p, row in inputs['bp_ramp_up_cyc'].iterrows() for s, value in row.items()}
     parameters['bp_ramp_down_cyc'] = {(p, s): value for p, row in inputs['bp_ramp_down_cyc'].iterrows() for s, value in row.items()}
     parameters['bp_ramp_tot_cyc'] = {(p, s): value for p, row in inputs['bp_ramp_tot_cyc'].iterrows() for s, value in row.items()}
+    parameters['bp_forced_commit'] = {(p, t): value for p, row in inputs['bp_forced_commit'].iterrows() for t, value in row.items()}
 
     def log_sample_summary(logger, name, parameter_dict, sample_size=5):
         logger.debug(f"{name} assigned (sample): {list(parameter_dict.values())[:sample_size]} ... (total: {len(parameter_dict)})")
@@ -243,7 +244,8 @@ def build_and_run(inputs, milp=False):
                                          ]
         variables['q_bp_rr_down_change'] = [[model.add_binary_variable(name=f'q_bp_rr_down_change_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
                                            ]
-        variables['q_bp_committed'] = [[model.add_binary_variable(name=f'q_bp_committed_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
+        variables['q_bp_committed'] = [[model.add_integer_variable(lb=parameters['bp_forced_commit'][p,t], ub=1,
+                                                                   name=f'q_bp_committed_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
                                            ]
         variables['q_tur_committed'] = [[model.add_binary_variable(name=f'q_tur_committed_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
                                            ]
