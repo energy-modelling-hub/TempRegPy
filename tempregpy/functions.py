@@ -331,6 +331,7 @@ def load_config(file_path):
                 'T_tur_values': 1,
                 'P_tur_min_values': 1,
                 'P_tur_max_values': 1,
+                'bp_forced_commit': 1,
             }
             initialize_inputs_with_conversion(plant_hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'river_nodes')
 
