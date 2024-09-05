@@ -416,21 +416,6 @@ def load_config(file_path):
             inputs['river_incidence_matrix'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=inputs['river_topology'])
             inputs['river_adjecency_matrix'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=inputs['river_topology'])
 
-            # Populate the incidence matrix
-            for i, connection in enumerate(inputs['river_topology']):
-                source, target = connection.split(' - ')
-                if source in inputs['river_nodes'] and target in inputs['river_nodes']:
-                    inputs['river_incidence_matrix'].loc[connection, source] = -1
-                    inputs['river_incidence_matrix'].loc[connection, target] = 1
-
-            # Populate the adjecency matrix
-            for i, connection in enumerate(inputs['river_topology']):
-                source, target = connection.split(' - ')
-                if source in inputs['river_nodes'] and target in inputs['river_nodes']:
-                    inputs['river_adjecency_matrix'].loc[source, target] = 1
-                else:
-                    inputs['river_adjecency_matrix'].loc[source, target] = 1
-
             inputs['plants_nodes'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=inputs['nodes'])
             for connection in inputs['plant_to_node']:
                 plant, node = connection.split(' - ')
@@ -451,15 +436,6 @@ def load_config(file_path):
                 inputs['Q_hulls'][i].loc[:, 'Qmax'] = inputs['Q_gg_max_values'][i]
                 inputs['Q_hulls'][i].loc[:, 'Tmin'] = inputs['T_gauge_hourly_min_values'][i]
                 inputs['Q_hulls'][i].loc[:, 'Tmax'] = inputs['T_gauge_hourly_max_values'][i]
-            # inputs['Q_hulls'] = pd.DataFrame(index=inputs['river_nodes'], columns=['Qmin', 'Qmax', 'Tmin', 'Tmax'])
-            # inputs['Q_hulls'].loc[:, 'Qmin'] = inputs['Q_gg_min_values'].min(axis=1)
-            # inputs['Q_hulls'].loc[:, 'Qmax'] = inputs['Q_gg_max_values'].max(axis=1)
-            # inputs['Q_hulls'].loc[:, 'Tmin'] = inputs['T_gauge_hourly_min_values'].min(axis=1)
-            # inputs['Q_hulls'].loc[:, 'Tmax'] = inputs['T_gauge_hourly_max_values'].max(axis=1)
-            # inputs['Q_hulls'].loc[:, 'Qin_min'] = 0
-            # inputs['Q_hulls'].loc[:, 'Qin_max'] = inputs['Q_source_max'].max(axis=1)
-            # inputs['Q_hulls'].loc[:, 'Tin_min'] = inputs['T_source_hourly_min_values'].min(axis=1)
-            # inputs['Q_hulls'].loc[:, 'Tin_max'] = inputs['T_source_hourly_max_values'].max(axis=1)
 
             return inputs
         except Exception as e:
