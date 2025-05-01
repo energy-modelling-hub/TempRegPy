@@ -3,7 +3,7 @@ import numpy as np
 from .logging_config import *
 
 
-def plot_dispatch(df_dispatch, df_lmp, save_fig=False, fig_name='', unit_name=''):
+def plot_dispatch(df_dispatch, df_lmp, save_fig=False, fig_name='', unit_name='', show_figure=True):
     fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(12, 6), sharex=True)
 
     # Plot the stacked area chart on the primary y-axis of the first subplot
@@ -54,7 +54,8 @@ def plot_dispatch(df_dispatch, df_lmp, save_fig=False, fig_name='', unit_name=''
     if save_fig is True:
         plt.savefig(fig_name + '.png', dpi=300)
         logger.info('Saved figure ' + fig_name + '.png')
-    plt.show()
+    if show_figure:
+        plt.show()
 
 def plot_temperature_analysis(df_dispatch, df_t, df_lmp, save_fig=False, fig_name=''):
     # Define the plot with subplots
