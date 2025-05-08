@@ -322,7 +322,7 @@ def build_and_run(inputs):
                       variables['slack_q_gg_cyc_min'][p] + variables['slack_q_gg_cyc_max'][p]) *1000
 
     for t in range(len(inputs['time_horizon'])):
-        obj_fnc += (- sum(variables['slack_p_node_min'][n][t] + variables['slack_p_node_max'][n][t] * 1000 for n in range(len(inputs['nodes']))))
+        obj_fnc += (- sum((variables['slack_p_node_min'][n][t] + variables['slack_p_node_max'][n][t]) * 1000 for n in range(len(inputs['nodes']))))
 
     model.maximize(obj_fnc)
     # model.minimize(obj_fnc)
