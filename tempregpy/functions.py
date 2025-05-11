@@ -251,8 +251,7 @@ def initialize_inputs_with_conversion(keys_with_conversion, config, par_name, co
 def log_error(key):
     logger.error(f'There is no such key {key}')
 
-
-def load_config(file_path):
+def load_config_from_excel(file_path):
     full_path = os.path.abspath(file_path)
 
     # Log the file name and full path
@@ -266,181 +265,186 @@ def load_config(file_path):
         # Parse the relevant sheet
         try:
             config = excel_data.parse('Inputs')
-            logger.info('Inputs have been succesfully parsed')
-            par_name = 'Python Variable Names'
-            input_type = 'Single input'
 
-            # Initialize the input_data dictionary
-            inputs = {}
-            inputs['file_path'] = file_path
-
-            # Hourly values
-            inputs['time_horizon'] = [f'H{i:02}' for i in range(1, 25)]
-
-            # Define list of plants
-            plant_keys = ['plants', 'gauges', 'nodes', 'river_topology', 'plant_to_node', 'sinks', 'sources']
-            initialize_inputs(plant_keys, config, par_name, inputs['time_horizon'], inputs, [])
-
-            # Create incidence matrix for Plants and Gauges
-            inputs['river_nodes'] = np.concatenate((inputs['plants'], inputs['gauges']))
-
-            # Process constraint related inputs
-            constraint_keys = [
-                'sim_folder', 'plt_show', 'cnstr_bp_ramp', 'cnstr_tur_ramp', 'cnstr_tot_ramp', 'cnstr_gg_ramp',
-                'cnstr_temp_t01t24', 'cnstr_bp_t01t24', 'cnstr_tur_t01t24', 'cnstr_tot_t01t24', 'cnstr_gg_t01t24',
-                'cnstr_oper_range', 'sim_type'
-            ]
-            # Loop through each key and extract the corresponding value
-            for key in constraint_keys:
-                inputs[key] = config.loc[config[par_name] == key, input_type].values[0]
-
-            ##################################
-            # Process plant related input data
-            ##################################
-            plant_input_keys = ['Q_tot_daily']
-            initialize_inputs_with_index(plant_input_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes', 0)
-
-            plant_keys_with_conversion = {
-                'Q_max_daily_change': cfs_to_af,
-                'Q_bp_ramp_down_max': cfs_to_af,
-                'Q_bp_ramp_up_max': cfs_to_af,
-                'Q_tur_ramp_down_max': cfs_to_af,
-                'Q_tur_ramp_up_max': cfs_to_af,
-                'Q_tot_ramp_up_max': cfs_to_af,
-                'Q_tot_ramp_down_max': cfs_to_af,
-                'Q_gg_ramp_up_max': cfs_to_af,
-                'Q_gg_ramp_down_max': cfs_to_af,
-                'WaterToPowerConversion': 1 / cfs_to_af,
-                'bp_ramp_down_cyc': 1,
-                'bp_ramp_up_cyc': 1,
-                'bp_ramp_tot_cyc': 1,
-            }
-            initialize_inputs_with_conversion(plant_keys_with_conversion, config, par_name, ['Name', input_type],
-                                              inputs, 'river_nodes')
-            # Hourly values
-            plant_hourly_keys = {
-                'Q_bp_min_values': cfs_to_af,
-                'Q_bp_max_values': cfs_to_af,
-                'Q_tur_min_values': cfs_to_af,
-                'Q_tur_max_values': cfs_to_af,
-                'Q_tot_min_values': cfs_to_af,
-                'Q_tot_max_values': cfs_to_af,
-                'Q_gg_min_values': cfs_to_af,
-                'Q_gg_max_values': cfs_to_af,
-                'T_bp_values': 1,
-                'T_tur_values': 1,
-                'P_tur_min_values': 1,
-                'P_tur_max_values': 1,
-                'bp_forced_commit': 1,
-            }
-            initialize_inputs_with_conversion(plant_hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'river_nodes')
-
-            river_connection_hourly_keys = {
-                'Flow_i_j_max': cfs_to_af,
-                'Flow_i_j_min': cfs_to_af,
-                'T_source_hourly_max_values': 1,
-                'T_source_hourly_min_values': 1,
-                'T_sink_hourly_max_values': 1,
-                'T_sink_hourly_min_values': 1,
-            }
-            initialize_inputs_with_conversion(river_connection_hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'river_topology')
-
-
-            ##################################
-            # Process gauge related input data
-            ##################################
-            gauge_keys = [
-                'T_ramp_up_delta', 'T_ramp_down_delta', 'T_gauge_daily'
-            ]
-            initialize_inputs_with_index(gauge_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes', 0)
-            gauge_hourly_min_keys = [
-                'T_gauge_hourly_min_values'
-            ]
-            initialize_inputs_with_index(gauge_hourly_min_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'gauges', 0)
-
-            gauge_hourly_max_keys = [
-                'T_gauge_hourly_max_values'
-            ]
-            initialize_inputs_with_index(gauge_hourly_max_keys, config, par_name, ['Name'] + inputs['time_horizon'], inputs, 'gauges', 25)
-
-            inputs['T_gauge_hourly_min_values'] = inputs['T_gauge_hourly_min_values'].reindex(inputs['river_nodes'], fill_value=0)
-            inputs['T_gauge_hourly_max_values'] = inputs['T_gauge_hourly_max_values'].reindex(inputs['river_nodes'], fill_value=25)
-            #################################
-            # Process node related input data
-            #################################
-            node_keys = []
-            initialize_inputs_with_index(node_keys, config, par_name, ['Name', input_type], inputs, 'nodes', 0)
-            node_hourly_keys = [
-                'LMP_values', 'Demand_values'
-            ]
-            initialize_inputs_with_index(node_hourly_keys, config, par_name, ['Name'] + inputs['time_horizon'], inputs, 'nodes', 0)
-
-            ###########################################
-            # Process plant to gauge related input data
-            ###########################################
-            plant_to_gauge_keys = [
-                'dT_daily'
-            ]
-            initialize_inputs_with_index(plant_to_gauge_keys, config, par_name, ['Name', input_type], inputs,
-                                         'river_topology', 0)
-            plant_to_gauge__hourly_keys = [
-                'dT_hourly_values'
-            ]
-            initialize_inputs_with_index(plant_to_gauge__hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs,
-                                         'river_topology', 0)
-
-            ##########################################
-            # Process plant to node related input data
-            ##########################################
-            plant_to_node_keys = []
-            initialize_inputs_with_index(plant_to_node_keys, config, par_name, ['Name', input_type], inputs,
-                                         'plant_to_node', 0)
-
-            ###################
-            # Process cost data
-            ###################
-            # Hourly values
-            cost_keys = {
-                'C_bp_ramp_up': 1/cfs_to_af,
-                'C_bp_ramp_down': 1/cfs_to_af,
-                'C_tur_ramp_up': 1/cfs_to_af,
-                'C_tur_ramp_down': 1/cfs_to_af,
-                'C_tot_ramp_up': 1/cfs_to_af,
-                'C_tot_ramp_down': 1/cfs_to_af,
-                'C_gg_ramp_up': 1 / cfs_to_af,
-                'C_gg_ramp_down': 1 / cfs_to_af,
-            }
-            initialize_inputs_with_conversion(cost_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes')
-
-            # Create a DataFrame for the incidence matrix
-            inputs['river_incidence_matrix'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=inputs['river_topology'])
-            inputs['river_adjecency_matrix'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=inputs['river_topology'])
-
-            inputs['plants_nodes'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=inputs['nodes'])
-            for connection in inputs['plant_to_node']:
-                plant, node = connection.split(' - ')
-                inputs['plants_nodes'].loc[plant, node] = 1
-
-            inputs['C_source'] = pd.DataFrame(10000, index=inputs['river_nodes'], columns=['Single input'])
-            inputs['C_source'].loc[inputs['sources']] = 0
-            inputs['Q_source_max'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=['Single input'])
-            inputs['Q_source_max'].loc[inputs['sources']] = 10000
-            inputs['C_sink'] = pd.DataFrame(10000, index=inputs['river_nodes'], columns=['Single input'])
-            inputs['C_sink'].loc[inputs['sinks']] = 0
-            inputs['Q_sink_max'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=['Single input'])
-            inputs['Q_sink_max'].loc[inputs['sinks']] = 10000
-            inputs['Q_hulls'] = {}
-            for i in inputs['time_horizon']:
-                inputs['Q_hulls'][i] = pd.DataFrame(index=inputs['river_nodes'], columns=['Qmin', 'Qmax', 'Tmin', 'Tmax'])
-                inputs['Q_hulls'][i].loc[:, 'Qmin'] = inputs['Q_gg_min_values'][i]
-                inputs['Q_hulls'][i].loc[:, 'Qmax'] = inputs['Q_gg_max_values'][i]
-                inputs['Q_hulls'][i].loc[:, 'Tmin'] = inputs['T_gauge_hourly_min_values'][i]
-                inputs['Q_hulls'][i].loc[:, 'Tmax'] = inputs['T_gauge_hourly_max_values'][i]
-
-            return inputs
+            return prepare_opt_config(config, file_path)
         except Exception as e:
             logger.error(f'Not able to parse Inputs. Error: {e}')
             sys.exit(1)
     except Exception as e:
         logger.error(f'Failed to read the file. Error: {e}')
         sys.exit(1)
+
+
+def prepare_opt_config(config, file_path):
+    logger.info('Inputs have been succesfully parsed')
+    par_name = 'Python Variable Names'
+    input_type = 'Single input'
+
+    # Initialize the input_data dictionary
+    inputs = {}
+    inputs['file_path'] = file_path
+
+    # Hourly values
+    inputs['time_horizon'] = [f'H{i:02}' for i in range(1, 25)]
+
+    # Define list of plants
+    plant_keys = ['plants', 'gauges', 'nodes', 'river_topology', 'plant_to_node', 'sinks', 'sources']
+    initialize_inputs(plant_keys, config, par_name, inputs['time_horizon'], inputs, [])
+
+    # Create incidence matrix for Plants and Gauges
+    inputs['river_nodes'] = np.concatenate((inputs['plants'], inputs['gauges']))
+
+    # Process constraint related inputs
+    constraint_keys = [
+        'sim_folder', 'plt_show', 'cnstr_bp_ramp', 'cnstr_tur_ramp', 'cnstr_tot_ramp', 'cnstr_gg_ramp',
+        'cnstr_temp_t01t24', 'cnstr_bp_t01t24', 'cnstr_tur_t01t24', 'cnstr_tot_t01t24', 'cnstr_gg_t01t24',
+        'cnstr_oper_range', 'sim_type'
+    ]
+    # Loop through each key and extract the corresponding value
+    for key in constraint_keys:
+        inputs[key] = config.loc[config[par_name] == key, input_type].values[0]
+
+    ##################################
+    # Process plant related input data
+    ##################################
+    plant_input_keys = ['Q_tot_daily']
+    initialize_inputs_with_index(plant_input_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes', 0)
+
+    plant_keys_with_conversion = {
+        'Q_max_daily_change': cfs_to_af,
+        'Q_bp_ramp_down_max': cfs_to_af,
+        'Q_bp_ramp_up_max': cfs_to_af,
+        'Q_tur_ramp_down_max': cfs_to_af,
+        'Q_tur_ramp_up_max': cfs_to_af,
+        'Q_tot_ramp_up_max': cfs_to_af,
+        'Q_tot_ramp_down_max': cfs_to_af,
+        'Q_gg_ramp_up_max': cfs_to_af,
+        'Q_gg_ramp_down_max': cfs_to_af,
+        'WaterToPowerConversion': 1 / cfs_to_af,
+        'bp_ramp_down_cyc': 1,
+        'bp_ramp_up_cyc': 1,
+        'bp_ramp_tot_cyc': 1,
+    }
+    initialize_inputs_with_conversion(plant_keys_with_conversion, config, par_name, ['Name', input_type],
+                                        inputs, 'river_nodes')
+    # Hourly values
+    plant_hourly_keys = {
+        'Q_bp_min_values': cfs_to_af,
+        'Q_bp_max_values': cfs_to_af,
+        'Q_tur_min_values': cfs_to_af,
+        'Q_tur_max_values': cfs_to_af,
+        'Q_tot_min_values': cfs_to_af,
+        'Q_tot_max_values': cfs_to_af,
+        'Q_gg_min_values': cfs_to_af,
+        'Q_gg_max_values': cfs_to_af,
+        'T_bp_values': 1,
+        'T_tur_values': 1,
+        'P_tur_min_values': 1,
+        'P_tur_max_values': 1,
+        'bp_forced_commit': 1,
+    }
+    initialize_inputs_with_conversion(plant_hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'river_nodes')
+
+    river_connection_hourly_keys = {
+        'Flow_i_j_max': cfs_to_af,
+        'Flow_i_j_min': cfs_to_af,
+        'T_source_hourly_max_values': 1,
+        'T_source_hourly_min_values': 1,
+        'T_sink_hourly_max_values': 1,
+        'T_sink_hourly_min_values': 1,
+    }
+    initialize_inputs_with_conversion(river_connection_hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'river_topology')
+
+
+    ##################################
+    # Process gauge related input data
+    ##################################
+    gauge_keys = [
+        'T_ramp_up_delta', 'T_ramp_down_delta', 'T_gauge_daily'
+    ]
+    initialize_inputs_with_index(gauge_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes', 0)
+    gauge_hourly_min_keys = [
+        'T_gauge_hourly_min_values'
+    ]
+    initialize_inputs_with_index(gauge_hourly_min_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'gauges', 0)
+
+    gauge_hourly_max_keys = [
+        'T_gauge_hourly_max_values'
+    ]
+    initialize_inputs_with_index(gauge_hourly_max_keys, config, par_name, ['Name'] + inputs['time_horizon'], inputs, 'gauges', 25)
+
+    inputs['T_gauge_hourly_min_values'] = inputs['T_gauge_hourly_min_values'].reindex(inputs['river_nodes'], fill_value=0)
+    inputs['T_gauge_hourly_max_values'] = inputs['T_gauge_hourly_max_values'].reindex(inputs['river_nodes'], fill_value=25)
+    #################################
+    # Process node related input data
+    #################################
+    node_keys = []
+    initialize_inputs_with_index(node_keys, config, par_name, ['Name', input_type], inputs, 'nodes', 0)
+    node_hourly_keys = [
+        'LMP_values', 'Demand_values'
+    ]
+    initialize_inputs_with_index(node_hourly_keys, config, par_name, ['Name'] + inputs['time_horizon'], inputs, 'nodes', 0)
+
+    ###########################################
+    # Process plant to gauge related input data
+    ###########################################
+    plant_to_gauge_keys = [
+        'dT_daily'
+    ]
+    initialize_inputs_with_index(plant_to_gauge_keys, config, par_name, ['Name', input_type], inputs,
+                                    'river_topology', 0)
+    plant_to_gauge__hourly_keys = [
+        'dT_hourly_values'
+    ]
+    initialize_inputs_with_index(plant_to_gauge__hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs,
+                                    'river_topology', 0)
+
+    ##########################################
+    # Process plant to node related input data
+    ##########################################
+    plant_to_node_keys = []
+    initialize_inputs_with_index(plant_to_node_keys, config, par_name, ['Name', input_type], inputs,
+                                    'plant_to_node', 0)
+
+    ###################
+    # Process cost data
+    ###################
+    # Hourly values
+    cost_keys = {
+        'C_bp_ramp_up': 1/cfs_to_af,
+        'C_bp_ramp_down': 1/cfs_to_af,
+        'C_tur_ramp_up': 1/cfs_to_af,
+        'C_tur_ramp_down': 1/cfs_to_af,
+        'C_tot_ramp_up': 1/cfs_to_af,
+        'C_tot_ramp_down': 1/cfs_to_af,
+        'C_gg_ramp_up': 1 / cfs_to_af,
+        'C_gg_ramp_down': 1 / cfs_to_af,
+    }
+    initialize_inputs_with_conversion(cost_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes')
+
+    # Create a DataFrame for the incidence matrix
+    inputs['river_incidence_matrix'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=inputs['river_topology'])
+    inputs['river_adjecency_matrix'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=inputs['river_topology'])
+
+    inputs['plants_nodes'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=inputs['nodes'])
+    for connection in inputs['plant_to_node']:
+        plant, node = connection.split(' - ')
+        inputs['plants_nodes'].loc[plant, node] = 1
+
+    inputs['C_source'] = pd.DataFrame(10000, index=inputs['river_nodes'], columns=['Single input'])
+    inputs['C_source'].loc[inputs['sources']] = 0
+    inputs['Q_source_max'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=['Single input'])
+    inputs['Q_source_max'].loc[inputs['sources']] = 10000
+    inputs['C_sink'] = pd.DataFrame(10000, index=inputs['river_nodes'], columns=['Single input'])
+    inputs['C_sink'].loc[inputs['sinks']] = 0
+    inputs['Q_sink_max'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=['Single input'])
+    inputs['Q_sink_max'].loc[inputs['sinks']] = 10000
+    inputs['Q_hulls'] = {}
+    for i in inputs['time_horizon']:
+        inputs['Q_hulls'][i] = pd.DataFrame(index=inputs['river_nodes'], columns=['Qmin', 'Qmax', 'Tmin', 'Tmax'])
+        inputs['Q_hulls'][i].loc[:, 'Qmin'] = inputs['Q_gg_min_values'][i]
+        inputs['Q_hulls'][i].loc[:, 'Qmax'] = inputs['Q_gg_max_values'][i]
+        inputs['Q_hulls'][i].loc[:, 'Tmin'] = inputs['T_gauge_hourly_min_values'][i]
+        inputs['Q_hulls'][i].loc[:, 'Tmax'] = inputs['T_gauge_hourly_max_values'][i]
+
+    return inputs
