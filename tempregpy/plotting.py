@@ -14,8 +14,11 @@ def plot_dispatch(df_dispatch, df_lmp, save_fig=False, fig_name='', unit_name=''
     ax1.set_ylabel('Release (CFS)', fontsize=12)
 
     # Customize the x-ticks for the shared x-axis
-    ax1.set_xticks(np.arange(0, len(df_dispatch.index)))
-    ax1.set_xticklabels(df_dispatch.index)
+    # ax1.set_xticks(np.arange(0, len(df_dispatch.index)))
+    # ax1.set_xticklabels(df_dispatch.index)
+    xticks = np.arange(0, len(df_dispatch.index), 6)
+    ax1.set_xticks(xticks)
+    ax1.set_xticklabels(df_dispatch.index[xticks])
 
     # Grid for better visualization
     ax1.grid(True, linestyle='--', alpha=0.5)
@@ -162,6 +165,39 @@ def plot_temperature_analysis(df_dispatch, df_t, df_lmp, save_fig=False, fig_nam
     # Combine legends for the second subplot
     lines4, labels4 = ax4.get_legend_handles_labels()
     ax4.legend(lines4, labels4, loc='upper left', fontsize=12)
+    # Show plot
+    plt.tight_layout()
+    if save_fig is True:
+        plt.savefig(fig_name + '.png', dpi=300)
+        logger.info('Saved figure ' + fig_name + '.png')
+    plt.show()
+
+
+def plot_load_serving(df_dispatch, save_fig=False, fig_name='', unit_name='',node_name=''):
+    fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(12, 6), sharex=True)
+
+    # Plot the stacked area chart on the primary y-axis of the first subplot
+    df_dispatch[node_name].plot(ax=ax1, alpha=0.6, color='black')
+    df_dispatch[unit_name].plot.area(ax=ax1, alpha=0.6)
+
+    # Align the two columns before comparison
+    node1, gcd = df_dispatch[node_name].align(df_dispatch[unit_name], join='inner')
+    ax1.fill_between(df_dispatch.index, node1, gcd,
+                     where=(node1 > gcd),
+                     interpolate=True, color='red', hatch='//', edgecolor='black', alpha=0.5)
+
+    # Customizations for the primary y-axis
+    ax1.set_title(f'Load serving for {node_name}', fontsize=15)
+    ax1.set_ylabel('Energy (MWh)', fontsize=12)
+
+    # Customize the x-ticks for every 24th value
+    xticks = np.arange(0, len(df_dispatch.index), 6)
+    ax1.set_xticks(xticks)
+    ax1.set_xticklabels(df_dispatch.index[xticks])
+
+    # Grid for better visualization
+    ax1.grid(True, linestyle='--', alpha=0.5)
+
     # Show plot
     plt.tight_layout()
     if save_fig is True:

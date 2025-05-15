@@ -272,10 +272,12 @@ def load_config(file_path):
 
             # Initialize the input_data dictionary
             inputs = {}
+            inputs['version'] = config.loc[config[par_name] == 'version', input_type].values[0]
             inputs['file_path'] = file_path
 
             # Hourly values
-            inputs['time_horizon'] = [f'H{i:02}' for i in range(1, 25)]
+            inputs['time_horizon'] = [f'H{i:02}' for i in range(1, 169)]
+            inputs['daily_horizon'] = [f'H{i:02}' for i in range(1, 8)]
 
             # Define list of plants
             plant_keys = ['plants', 'gauges', 'nodes', 'river_topology', 'plant_to_node', 'sinks', 'sources']
@@ -288,7 +290,7 @@ def load_config(file_path):
             constraint_keys = [
                 'sim_folder', 'plt_show', 'cnstr_bp_ramp', 'cnstr_tur_ramp', 'cnstr_tot_ramp', 'cnstr_gg_ramp',
                 'cnstr_temp_t01t24', 'cnstr_bp_t01t24', 'cnstr_tur_t01t24', 'cnstr_tot_t01t24', 'cnstr_gg_t01t24',
-                'cnstr_oper_range', 'sim_type'
+                'cnstr_oper_range', 'sim_type', 'sim_time'
             ]
             # Loop through each key and extract the corresponding value
             for key in constraint_keys:
@@ -298,10 +300,18 @@ def load_config(file_path):
             # Process plant related input data
             ##################################
             plant_input_keys = ['Q_tot_daily']
-            initialize_inputs_with_index(plant_input_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes', 0)
+            if inputs['version'] == 'v0.1.2':
+                initialize_inputs_with_index(plant_input_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes', 0)
+            else:
+                initialize_inputs_with_index(plant_input_keys, config, par_name, ['Name']+inputs['daily_horizon'], inputs, 'river_nodes', 0)
+
+            plant_input_keys_with_conversion = {
+                'Q_max_daily_change': cfs_to_af,
+                'WaterToPowerConversion': 1 / cfs_to_af,
+            }
+            initialize_inputs_with_conversion(plant_input_keys_with_conversion, config, par_name, ['Name']+inputs['daily_horizon'], inputs, 'river_nodes')
 
             plant_keys_with_conversion = {
-                'Q_max_daily_change': cfs_to_af,
                 'Q_bp_ramp_down_max': cfs_to_af,
                 'Q_bp_ramp_up_max': cfs_to_af,
                 'Q_tur_ramp_down_max': cfs_to_af,
@@ -310,7 +320,6 @@ def load_config(file_path):
                 'Q_tot_ramp_down_max': cfs_to_af,
                 'Q_gg_ramp_up_max': cfs_to_af,
                 'Q_gg_ramp_down_max': cfs_to_af,
-                'WaterToPowerConversion': 1 / cfs_to_af,
                 'bp_ramp_down_cyc': 1,
                 'bp_ramp_up_cyc': 1,
                 'bp_ramp_tot_cyc': 1,
@@ -349,8 +358,11 @@ def load_config(file_path):
             ##################################
             # Process gauge related input data
             ##################################
+            gauge_daily_keys = ['T_gauge_daily']
+            initialize_inputs_with_index(gauge_daily_keys, config, par_name, ['Name']+inputs['daily_horizon'], inputs, 'river_nodes', 0)
+
             gauge_keys = [
-                'T_ramp_up_delta', 'T_ramp_down_delta', 'T_gauge_daily'
+                'T_ramp_up_delta', 'T_ramp_down_delta'
             ]
             initialize_inputs_with_index(gauge_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes', 0)
             gauge_hourly_min_keys = [
@@ -379,9 +391,14 @@ def load_config(file_path):
             # Process plant to gauge related input data
             ###########################################
             plant_to_gauge_keys = [
-                'dT_daily'
+                # 'dT_daily'
             ]
             initialize_inputs_with_index(plant_to_gauge_keys, config, par_name, ['Name', input_type], inputs,
+                                         'river_topology', 0)
+            plant_to_gauge_daily_keys = [
+                'dT_daily'
+            ]
+            initialize_inputs_with_index(plant_to_gauge_daily_keys, config, par_name, ['Name']+inputs['daily_horizon'], inputs,
                                          'river_topology', 0)
             plant_to_gauge__hourly_keys = [
                 'dT_hourly_values'
@@ -436,6 +453,14 @@ def load_config(file_path):
                 inputs['Q_hulls'][i].loc[:, 'Qmax'] = inputs['Q_gg_max_values'][i]
                 inputs['Q_hulls'][i].loc[:, 'Tmin'] = inputs['T_gauge_hourly_min_values'][i]
                 inputs['Q_hulls'][i].loc[:, 'Tmax'] = inputs['T_gauge_hourly_max_values'][i]
+
+            keys = ['Q_tot_daily','Q_max_daily_change','WaterToPowerConversion','T_gauge_daily','dT_daily']
+            for key in keys:
+                inputs[key].columns = [
+                    col.replace('H', 'D') if col.startswith('H') else col
+                    for col in inputs[key].columns
+                ]
+            inputs['daily_horizon'] = [f'D{i:02}' for i in range(1, 8)]
 
             return inputs
         except Exception as e:

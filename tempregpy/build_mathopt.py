@@ -27,9 +27,13 @@ def build_and_run(inputs):
     parameters['dT_hourly'] = {(i, j, t): inputs['dT_hourly_values'].loc[f'{i} - {j}', t] if f'{i} - {j}' in inputs['dT_hourly_values'].index else 0
         for i in inputs['river_nodes'] for j in inputs['river_nodes'] for t in inputs['time_horizon']
     }
-    parameters['T_gg_daily'] = {(g, s): value for g, row in inputs['T_gauge_daily'].iterrows() for s, value in row.items()}
-    parameters['dT_daily'] = {(i, j): inputs['dT_daily'].loc[f'{i} - {j}', 'Single input'] if f'{i} - {j}' in inputs['dT_daily'].index else 0
-        for i in inputs['river_nodes'] for j in inputs['river_nodes']
+    # parameters['T_gg_daily'] = {(g, s): value for g, row in inputs['T_gauge_daily'].iterrows() for s, value in row.items()}
+    parameters['T_gg_daily'] = {(g, d): value for g, row in inputs['T_gauge_daily'].iterrows() for d, value in row.items()}
+    # parameters['dT_daily'] = {(i, j): inputs['dT_daily'].loc[f'{i} - {j}', 'Single input'] if f'{i} - {j}' in inputs['dT_daily'].index else 0
+    #     for i in inputs['river_nodes'] for j in inputs['river_nodes']
+    # }
+    parameters['dT_daily'] = {
+        (i, j): inputs['dT_daily'].loc[f'{i} - {j}'].tolist() if f'{i} - {j}' in inputs['dT_daily'].index else [0] * len(inputs['dT_daily'].columns) for i in inputs['river_nodes'] for j in inputs['river_nodes']
     }
     parameters['T_bp'] = {(p, t): value for p, row in inputs['T_bp_values'].iterrows() for t, value in row.items()}
     parameters['T_tur'] = {(p, t): value for p, row in inputs['T_tur_values'].iterrows() for t, value in row.items()}
@@ -87,9 +91,9 @@ def build_and_run(inputs):
     parameters['C_gg_ramp_down'] = {(p, s): value for p, row in inputs['C_gg_ramp_down'].iterrows() for s, value in row.items()}
     parameters['C_source'] = {(p, s): value for p, row in inputs['C_source'].iterrows() for s, value in row.items()}
     parameters['C_sink'] = {(p, s): value for p, row in inputs['C_sink'].iterrows() for s, value in row.items()}
-    parameters['Q_tot_daily'] = {(p, s): value for p, row in inputs['Q_tot_daily'].iterrows() for s, value in row.items()}
-    parameters['Q_max_daily_change'] = {(p, s): value for p, row in inputs['Q_max_daily_change'].iterrows() for s, value in row.items()}
-    parameters['WaterToPowerConversion'] = {(p, s): value for p, row in inputs['WaterToPowerConversion'].iterrows() for s, value in row.items()}
+    parameters['Q_tot_daily'] = {(p, d): value for p, row in inputs['Q_tot_daily'].iterrows() for d, value in row.items()}
+    parameters['Q_max_daily_change'] = {(p, d): value for p, row in inputs['Q_max_daily_change'].iterrows() for d, value in row.items()}
+    parameters['WaterToPowerConversion'] = {(p, d): value for p, row in inputs['WaterToPowerConversion'].iterrows() for d, value in row.items()}
     parameters['bp_ramp_up_cyc'] = {(p, s): value for p, row in inputs['bp_ramp_up_cyc'].iterrows() for s, value in row.items()}
     parameters['bp_ramp_down_cyc'] = {(p, s): value for p, row in inputs['bp_ramp_down_cyc'].iterrows() for s, value in row.items()}
     parameters['bp_ramp_tot_cyc'] = {(p, s): value for p, row in inputs['bp_ramp_tot_cyc'].iterrows() for s, value in row.items()}
@@ -150,9 +154,9 @@ def build_and_run(inputs):
     # Decision variables
     variables = {}
     # Variables
-    variables['q_tot_min'] = [model.add_variable(lb=min(value for (p, t), value in parameters['Q_tot_min'].items() if p == plant),
+    variables['q_tot_min'] = [[model.add_variable(lb=min(value for (p, t), value in parameters['Q_tot_min'].items() if p == plant),
                                                  ub=max(value for (p, t), value in parameters['Q_tot_max'].items() if p == plant),
-                                                 name=f'q_tot_min_{plant}') for plant in inputs['river_nodes']
+                                                 name=f'q_tot_min_{plant}_{d}') for d in inputs['daily_horizon']] for plant in inputs['river_nodes']
                               ]
     variables['p_tur'] = [[model.add_variable(lb=parameters['P_tur_min'][p, t],
                                               ub=parameters['P_tur_max'][p, t],
@@ -235,13 +239,13 @@ def build_and_run(inputs):
                                                        name=f'q_gg_ramp_down_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
                          ]
     # Slack Variables
-    variables['slack_q_tot_daily_min'] = [model.add_variable(lb=0,
+    variables['slack_q_tot_daily_min'] = [[model.add_variable(lb=0,
                                                              ub=25000,
-                                                             name=f'slack_q_tot_daily_min_{p}') for p in inputs['river_nodes']
+                                                             name=f'slack_q_tot_daily_min_{p}_{d}') for d in inputs['daily_horizon']] for p in inputs['river_nodes']
                          ]
-    variables['slack_q_tot_daily_max'] = [model.add_variable(lb=0,
+    variables['slack_q_tot_daily_max'] = [[model.add_variable(lb=0,
                                                              ub=25000,
-                                                             name=f'slack_q_tot_daily_max_{p}') for p in inputs['river_nodes']
+                                                             name=f'slack_q_tot_daily_max_{p}_{d}') for d in inputs['daily_horizon']] for p in inputs['river_nodes']
                          ]
     variables['slack_q_bp_cyc_min'] = [model.add_variable(lb=0,
                                                           ub=25000,
@@ -315,8 +319,10 @@ def build_and_run(inputs):
                         - variables['q_gg_ramp_up'][p][t] * parameters['C_gg_ramp_up'][plant, 'Single input']
                         - variables['q_gg_ramp_down'][p][t] * parameters['C_gg_ramp_down'][plant, 'Single input']
                         )
-        obj_fnc += - (variables['slack_q_tot_daily_min'][p] + variables['slack_q_tot_daily_max'][p] +
-                      variables['slack_q_bp_cyc_min'][p] + variables['slack_q_bp_cyc_min'][p] +
+        for d in range(len(inputs['daily_horizon'])):
+            obj_fnc += - (variables['slack_q_tot_daily_min'][p][d] + variables['slack_q_tot_daily_max'][p][d]) * 1000
+
+        obj_fnc += - (variables['slack_q_bp_cyc_min'][p] + variables['slack_q_bp_cyc_min'][p] +
                       variables['slack_q_tur_cyc_min'][p] + variables['slack_q_tur_cyc_min'][p] +
                       variables['slack_q_tot_cyc_min'][p] + variables['slack_q_tot_cyc_max'][p] +
                       variables['slack_q_gg_cyc_min'][p] + variables['slack_q_gg_cyc_max'][p]) * 1000
@@ -325,6 +331,12 @@ def build_and_run(inputs):
         obj_fnc += (- sum((variables['slack_p_node_min'][n][t] + variables['slack_p_node_max'][n][t]) * 1000 for n in range(len(inputs['nodes']))))
 
     model.maximize(obj_fnc)
+
+    ###################################
+    ######## constants ###
+    ###################################
+    hours_per_day = 24
+    days_per_week = 7
 
     # Constraints
     constraints = []
@@ -343,13 +355,29 @@ def build_and_run(inputs):
             constraint_id_time.append(f'{inputs['time_horizon'][t]}')
             constraints.append(model.add_linear_constraint(variables['q_bp'][p][t] + variables['q_tur'][p][t] == variables['q_tot'][p][t]))
 
-    # Add constraint for total daily release
-    for p in range(len(inputs['river_nodes'])):
-        constraint_id_main.append('Total daily release')
-        constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
-        constraint_id_time.append('')
-        constraints.append(model.add_linear_constraint(sum(variables['q_tot'][p][t] for t in range(len(inputs['time_horizon']))) + variables['slack_q_tot_daily_min'][p] == parameters['Q_tot_daily'][inputs['river_nodes'][p],'Single input'] + variables['slack_q_tot_daily_max'][p]))
+    # # Add constraint for total daily release
+    # for p in range(len(inputs['river_nodes'])):
+    #     constraint_id_main.append('Total daily release')
+    #     constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+    #     constraint_id_time.append('')
+    #     constraints.append(model.add_linear_constraint(sum(variables['q_tot'][p][t] for t in range(len(inputs['time_horizon']))) + variables['slack_q_tot_daily_min'][p] == parameters['Q_tot_daily'][inputs['river_nodes'][p],'Single input'] + variables['slack_q_tot_daily_max'][p]))
 
+    for p in range(len(inputs['river_nodes'])):
+        for d in range(days_per_week):
+            constraint_id_main.append('Total daily release')
+            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+            constraint_id_time.append(f'D{d + 1:02}')
+
+            start_hour = d * hours_per_day
+            end_hour = start_hour + hours_per_day
+
+            constraints.append(
+                model.add_linear_constraint(
+                    sum(variables['q_tot'][p][t] for t in range(start_hour, end_hour)) +
+                    variables['slack_q_tot_daily_min'][p][d] == parameters['Q_tot_daily'][
+                        (inputs['river_nodes'][p], f'D{d + 1:02}')] + variables['slack_q_tot_daily_max'][p][d]
+                )
+            )
 
     ###################################
     ######## BINARY VARIABLES
@@ -364,11 +392,14 @@ def build_and_run(inputs):
                                                                name=f'q_bp_rr_up_change UB for {p} at {t}'))
 
         for p in range(len(inputs['river_nodes'])):
-            constraint_id_main.append('Daily bypass ramp up change limit')
-            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
-            constraint_id_time.append('')
-            constraints.append(model.add_linear_constraint(parameters['bp_ramp_up_cyc'][inputs['river_nodes'][p], 'Single input'] >= sum(variables['q_bp_rr_up_change'][p][t] for t in range(len(inputs['time_horizon']))),
-                                                           name=f'q_bp_rr_up_change UB for {p}'))
+            for d in range(days_per_week):
+                start_hour = d * hours_per_day
+                end_hour = start_hour + hours_per_day
+                constraint_id_main.append('Daily bypass ramp up change limit')
+                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                constraint_id_time.append(f'D{d + 1:02}')
+                constraints.append(model.add_linear_constraint(parameters['bp_ramp_up_cyc'][inputs['river_nodes'][p], 'Single input'] >= sum(variables['q_bp_rr_up_change'][p][t] for t in range(start_hour,end_hour)),
+                                                               name=f'q_bp_rr_up_change UB for {p} at {f'D{d + 1:02}'}'))
 
         for p in range(len(inputs['river_nodes'])):
             for t in range(len(inputs['time_horizon'])):
@@ -379,11 +410,14 @@ def build_and_run(inputs):
                                                                name=f'q_bp_rr_down_change UB for {p} at {t}'))
 
         for p in range(len(inputs['river_nodes'])):
-            constraint_id_main.append('Daily bypass ramp down change limit')
-            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
-            constraint_id_time.append('')
-            constraints.append(model.add_linear_constraint(parameters['bp_ramp_down_cyc'][inputs['river_nodes'][p], 'Single input'] >= sum(variables['q_bp_rr_down_change'][p][t] for t in range(len(inputs['time_horizon']))),
-                                                           name=f'q_bp_rr_down_change UB for {p}'))
+            for d in range(days_per_week):
+                start_hour = d * hours_per_day
+                end_hour = start_hour + hours_per_day
+                constraint_id_main.append('Daily bypass ramp down change limit')
+                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                constraint_id_time.append(f'D{d + 1:02}')
+                constraints.append(model.add_linear_constraint(parameters['bp_ramp_down_cyc'][inputs['river_nodes'][p], 'Single input'] >= sum(variables['q_bp_rr_down_change'][p][t] for t in range(start_hour,end_hour)),
+                                                               name=f'q_bp_rr_down_change UB for {p} at {f'D{d + 1:02}'}'))
 
         for p in range(len(inputs['river_nodes'])):
             for t in range(len(inputs['time_horizon'])):
@@ -399,13 +433,16 @@ def build_and_run(inputs):
                 constraint_id_time.append(f'{inputs['time_horizon'][t]}')
                 constraints.append(model.add_linear_constraint(variables['q_bp_committed'][p][t]*parameters['Q_bp_min'][inputs['river_nodes'][p],inputs['time_horizon'][t]] <= variables['q_bp'][p][t]))
 
-
+        ####TODO: Introduce a daily set
         for p in range(len(inputs['river_nodes'])):
-            constraint_id_main.append('Daily bypass ramp total change limit')
-            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
-            constraint_id_time.append('')
-            constraints.append(model.add_linear_constraint(parameters['bp_ramp_tot_cyc'][inputs['river_nodes'][p], 'Single input'] >= sum(variables['q_bp_rr_up_change'][p][t] + variables['q_bp_rr_down_change'][p][t] for t in range(len(inputs['time_horizon']))),
-                                                           name=f'q_bp_rr_total_change UB for {p}'))
+            for d in range(days_per_week):
+                start_hour = d * hours_per_day
+                end_hour = start_hour + hours_per_day
+                constraint_id_main.append('Daily bypass ramp total change limit')
+                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                constraint_id_time.append(f'D{d + 1:02}')
+                constraints.append(model.add_linear_constraint(parameters['bp_ramp_tot_cyc'][inputs['river_nodes'][p], 'Single input'] >= sum(variables['q_bp_rr_up_change'][p][t] + variables['q_bp_rr_down_change'][p][t] for t in range(start_hour,end_hour)),
+                                                               name=f'q_bp_rr_total_change UB for {p} at {f'D{d + 1:02}'}'))
 
     ###################################
     ######## FLOWS BETWEEN NODES
@@ -493,28 +530,33 @@ def build_and_run(inputs):
             constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
             constraint_id_time.append('')
             constraints.append(model.add_linear_constraint(
-                variables['q_gg'][p][0] + variables['slack_q_gg_cyc_min'][p] == variables['q_gg'][p][len(inputs['time_horizon']) - 1] + + variables['slack_q_gg_cyc_min'][p]))
+                variables['q_gg'][p][0] + variables['slack_q_gg_cyc_min'][p] == variables['q_gg'][p][len(inputs['time_horizon']) - 1] + variables['slack_q_gg_cyc_min'][p]))
 
     ###################################
     ######## OPERATING RANGE
     ###################################
-    # Add constraint for maximum daily operating range
     if inputs['cnstr_oper_range'] is True:
         logger.info('Maximum daily operating range constraints have been included in the optimization.')
         # Add constraints for maximum total daily ramping rate 8000CFS
         for p in range(len(inputs['river_nodes'])):
-            for t in range(len(inputs['time_horizon'])):
-                constraint_id_main.append('Maximum daily operating range - min')
-                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
-                constraint_id_time.append(f'{inputs['time_horizon'][t]}')
-                constraints.append(model.add_linear_constraint(variables['q_tot_min'][p] <= variables['q_tot'][p][t]))
+            for d in range(days_per_week):
+                start_hour = d * hours_per_day
+                end_hour = start_hour + hours_per_day
+                for t in range(start_hour, end_hour):
+                    constraint_id_main.append('Maximum daily operating range - min')
+                    constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                    constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+                    constraints.append(model.add_linear_constraint(variables['q_tot_min'][p][d] <= variables['q_tot'][p][t]))
         # Add constraints for maximum total daily ramping rate 8000CFS
         for p in range(len(inputs['river_nodes'])):
-            for t in range(len(inputs['time_horizon'])):
-                constraint_id_main.append('Maximum daily operating range - max')
-                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
-                constraint_id_time.append(f'{inputs['time_horizon'][t]}')
-                constraints.append(model.add_linear_constraint(variables['q_tot_min'][p] + parameters['Q_max_daily_change'][inputs['river_nodes'][p],'Single input'] >= variables['q_tot'][p][t]))
+            for d in range(days_per_week):
+                start_hour = d * hours_per_day
+                end_hour = start_hour + hours_per_day
+                for t in range(start_hour, end_hour):
+                    constraint_id_main.append('Maximum daily operating range - max')
+                    constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                    constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+                    constraints.append(model.add_linear_constraint(variables['q_tot_min'][p][d] + parameters['Q_max_daily_change'][inputs['river_nodes'][p],f'D{d + 1:02}'] >= variables['q_tot'][p][t]))
 
     ###################################
     ######## RAMPING RATES
@@ -624,11 +666,14 @@ def build_and_run(inputs):
     ###################################
     # Add constraints for power output
     for p in range(len(inputs['river_nodes'])):
-        for t in range(len(inputs['time_horizon'])):
-            constraint_id_main.append('Power Output')
-            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
-            constraint_id_time.append(f'{inputs['time_horizon'][t]}')
-            constraints.append(model.add_linear_constraint(variables['p_tur'][p][t] == variables['q_tur'][p][t] * parameters['WaterToPowerConversion'][inputs['river_nodes'][p],'Single input']))
+        for d in range(days_per_week):
+            start_hour = d * hours_per_day
+            end_hour = start_hour + hours_per_day
+            for t in range(start_hour, end_hour):
+                constraint_id_main.append('Power Output')
+                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+                constraints.append(model.add_linear_constraint(variables['p_tur'][p][t] == variables['q_tur'][p][t] * parameters['WaterToPowerConversion'][inputs['river_nodes'][p],f'D{d + 1:02}']))
 
     # Add constraints for power balance
     for n in range(len(inputs['nodes'])):
@@ -717,23 +762,31 @@ def build_and_run(inputs):
 
     # Add constraint for maximum daily temperature limit on the outflow side
     for p in range(len(inputs['river_nodes'])):
-        plant = inputs['river_nodes'][p]
-        constraint_id_main.append('Maximum daily average temperature (OutFlow)')
-        constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
-        constraint_id_time.append('')
-        constraints.append(model.add_linear_constraint(sum(variables['q_tur'][p][t]*parameters['T_tur'][plant,time] + variables['q_bp'][p][t]*parameters['T_bp'][plant,time] + variables['X'][p][t] for t in range(len(inputs['time_horizon']))) <= parameters['T_gg_daily'][inputs['river_nodes'][p], 'Single input'] * sum(variables['q_sink'][p][t] for t in range(len(inputs['time_horizon']))) + sum((parameters['T_gg_daily'][inputs['river_nodes'][j], 'Single input'] - parameters['dT_daily'][inputs['river_nodes'][p],inputs['river_nodes'][j]])*sum(variables['q_flow'][p][j][t] for t in range(len(inputs['time_horizon']))) for j in range(len(inputs['river_nodes']))),
-                                                           name = f'Maximum daily average temperature (OutFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
-                                                           ))
-
-    params = mathopt.SolveParameters(enable_output=True)
+        for d in range(days_per_week):
+            start_hour = d * hours_per_day
+            end_hour = start_hour + hours_per_day
+            plant = inputs['river_nodes'][p]
+            constraint_id_main.append('Maximum daily average temperature (OutFlow)')
+            constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+            constraint_id_time.append('')
+            constraints.append(model.add_linear_constraint(sum(variables['q_tur'][p][t]*parameters['T_tur'][plant,time] + variables['q_bp'][p][t]*parameters['T_bp'][plant,time] + variables['X'][p][t] for t in range(start_hour,end_hour)) <= parameters['T_gg_daily'][inputs['river_nodes'][p],f'D{d + 1:02}'] * sum(variables['q_sink'][p][t] for t in range(start_hour,end_hour)) + sum((parameters['T_gg_daily'][inputs['river_nodes'][j], f'D{d + 1:02}'] - parameters['dT_daily'][inputs['river_nodes'][p],inputs['river_nodes'][j]][d])*sum(variables['q_flow'][p][j][t] for t in range(start_hour,end_hour)) for j in range(len(inputs['river_nodes']))),
+                                                               name = f'Maximum daily average temperature (OutFlow) for {inputs['river_nodes'][p]} at {f'D{d + 1:02}'}'
+                                                               ))
+    time_limit = False
+    if inputs['sim_time'] >= 0:
+        import datetime
+        time_delta=datetime.timedelta(seconds=inputs['sim_time'])
+        params = mathopt.SolveParameters(enable_output=True, time_limit=time_delta)
+    else:
+        params = mathopt.SolveParameters(enable_output=True)
     if inputs['sim_type'] == 'MILP':
         result = mathopt.solve(model, mathopt.SolverType.HIGHS, params=params)
         duals = None
-        assert result.termination.reason == mathopt.TerminationReason.OPTIMAL
+        assert result.termination.reason in {mathopt.TerminationReason.OPTIMAL, mathopt.TerminationReason.FEASIBLE}
     else:
         result = mathopt.solve(model, mathopt.SolverType.GLOP, params=params)
         duals = result.dual_values()
-        assert result.termination.reason == mathopt.TerminationReason.OPTIMAL
+        assert result.termination.reason in {mathopt.TerminationReason.OPTIMAL, mathopt.TerminationReason.FEASIBLE}
 
     # Determine the directory where the Excel file is located
     base_directory = os.path.dirname(inputs['file_path'])
@@ -776,8 +829,17 @@ def build_and_run(inputs):
             results = {}
             for var in ['Obj func']:
                 results[var] = pd.DataFrame([result.objective_value()])
+            # for var in ['q_tot_min']:
+            #     results[var] = pd.DataFrame(result.variable_values(variables[var]),index=inputs['river_nodes'])/cfs_to_af
+
             for var in ['q_tot_min']:
-                results[var] = pd.DataFrame(result.variable_values(variables[var]),index=inputs['river_nodes'])/cfs_to_af
+                results[var] = pd.DataFrame(columns=inputs['river_nodes'], index=inputs['daily_horizon'])
+                for p in range(len(inputs['river_nodes'])):
+                    plant = inputs['river_nodes'][p]
+                    for d in range(len(inputs['daily_horizon'])):
+                        day = inputs['daily_horizon'][d]
+                        results[var].loc[day,plant] = result.variable_values(variables[var][p][d])/cfs_to_af
+
             for var in ['q_bp', 'q_tur', 'q_tot', 'q_gg', 'q_source', 'q_sink', 'q_in_flow', 'q_out_flow', 'X',
                         'q_bp_ramp_up', 'q_bp_ramp_down', 'q_tur_ramp_up', 'q_tur_ramp_down', 'q_tot_ramp_up',
                         'q_tot_ramp_down', 'q_gg_ramp_up', 'q_gg_ramp_down']:
@@ -823,16 +885,24 @@ def build_and_run(inputs):
                 return t_results
 
             t_gauge = compute_gauge_temperatures(results['T_plant'], results['q_flow'], inputs['dT_hourly_values'])
-            t_gauge.astype('float64')
+            t_gauge = t_gauge.astype('float64')
             results['T_plant'].astype('float64')
             results['T_plant'].update(t_gauge)
             results['T_avg_daily'] = results['T_plant'].mean()
 
             # Slack variables
-            for var in ['slack_q_tot_daily_min', 'slack_q_tot_daily_max', 'slack_q_bp_cyc_min', 'slack_q_bp_cyc_max',
-                        'slack_q_tur_cyc_min', 'slack_q_tur_cyc_max', 'slack_q_tot_cyc_min', 'slack_q_tot_cyc_max',
+            for var in ['slack_q_bp_cyc_min', 'slack_q_bp_cyc_max', 'slack_q_tur_cyc_min', 'slack_q_tur_cyc_max', 'slack_q_tot_cyc_min', 'slack_q_tot_cyc_max',
                         'slack_q_gg_cyc_min', 'slack_q_gg_cyc_max']:
                 results[var] = pd.DataFrame(result.variable_values(variables[var]),index=inputs['river_nodes'])
+
+            # Slack variables
+            for var in ['slack_q_tot_daily_min', 'slack_q_tot_daily_max']:
+                results[var] = pd.DataFrame(index=inputs['daily_horizon'], columns=inputs['river_nodes'])
+                for p in range(len(inputs['river_nodes'])):
+                    plant = inputs['river_nodes'][p]
+                    results[var][plant] = result.variable_values(variables[var][p])
+
+
             for var in ['slack_p_node_min', 'slack_p_node_max']:
                 results[var] = {}
                 for p in range(len(inputs['nodes'])):
@@ -879,6 +949,9 @@ def build_and_run(inputs):
                     plot_data = pd.concat([results['q_bp'].loc[:, unit_name], results['q_tur'].loc[:, unit_name]], axis=1).set_axis(['q_bp', 'q_tur'], axis=1).clip(lower=0)
                     plot_data['LMP'] = get_lmp_values_for_plant(unit_name, inputs['plant_to_node'], inputs['LMP_values'])
                     plot_dispatch(plot_data[['q_bp','q_tur']], plot_data[['LMP']], save_fig=True, fig_name=simulation_folder_path + '\\plot', unit_name=unit_name)
+                    df_dispatch = inputs['Demand_values'].copy().T
+                    df_dispatch = pd.concat([df_dispatch, results['p_tur']], axis=1)
+                    plot_load_serving(df_dispatch,save_fig=True, fig_name=simulation_folder_path + '\\pload_serving', unit_name=unit_name, node_name='Node 1')
 
         else:
             logger.error('The problem does not have an optimal solution. Please review and revise the input data.')
