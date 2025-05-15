@@ -147,7 +147,7 @@ import numpy as np
 inputs, results, duals = {}, {}, {}
 cfs_to_af = 1/12.1
 # for rm in [0, 15, 30, 61]:
-for rm in [30]:
+for rm in [61]:
     inputs[rm], results[rm], duals[rm] = {}, {}, {}
     trace_list = [f"X{year}" for year in range(2020, 1991 - 1, -1)]
     for trace in trace_list:
