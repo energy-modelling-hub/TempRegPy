@@ -5,10 +5,14 @@ from .functions import *
 from .plotting import *
 from .utils import *
 from ortools.math_opt.python import mathopt
+import logging
 
 
 
-def build_and_run(inputs):
+def build_and_run(inputs, do_logging=True):
+
+    if not do_logging:
+        logging.disable(logging.CRITICAL)
 
     #####################
     ###### CONVEX HULLS
@@ -726,7 +730,7 @@ def build_and_run(inputs):
                                                            name = f'Maximum daily average temperature (OutFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
                                                            ))
 
-    params = mathopt.SolveParameters(enable_output=True)
+    params = mathopt.SolveParameters(enable_output=do_logging)
     if inputs['sim_type'] == 'MILP':
         result = mathopt.solve(model, mathopt.SolverType.HIGHS, params=params)
         duals = None
@@ -875,15 +879,15 @@ def build_and_run(inputs):
                 else:
                     raise ValueError(f"Plant {plant_name} not found in the mapping.")
 
-            for unit_name in inputs['plants']:
-                plot_data = pd.concat([results['q_bp'].loc[:, unit_name], results['q_tur'].loc[:, unit_name]], axis=1).set_axis(['q_bp', 'q_tur'], axis=1).clip(lower=0)
-                plot_data['LMP'] = get_lmp_values_for_plant(unit_name, inputs['plant_to_node'], inputs['LMP_values'])
-                plot_dispatch(plot_data[['q_bp','q_tur']], plot_data[['LMP']], save_fig=True, fig_name=simulation_folder_path + '\\plot', unit_name=unit_name,show_figure=inputs['plt_show'])
+            # for unit_name in inputs['plants']:
+            #     plot_data = pd.concat([results['q_bp'].loc[:, unit_name], results['q_tur'].loc[:, unit_name]], axis=1).set_axis(['q_bp', 'q_tur'], axis=1).clip(lower=0)
+            #     plot_data['LMP'] = get_lmp_values_for_plant(unit_name, inputs['plant_to_node'], inputs['LMP_values'])
+            #     plot_dispatch(plot_data[['q_bp','q_tur']], plot_data[['LMP']], save_fig=True, fig_name=simulation_folder_path + '\\plot', unit_name=unit_name,show_figure=inputs['plt_show'])
 
         else:
             logger.error('The problem does not have an optimal solution. Please review and revise the input data.')
 
-        copy_file_to_destination('TempRegPy\\app.log', simulation_folder_path)
+        # copy_file_to_destination('TempRegPy\\app.log', simulation_folder_path)
 
         return inputs, results, duals
 
