@@ -164,6 +164,72 @@ for i in ['30', '61']:
     df_daily['dT_daily'][i] = df_hourly['dT_hourly_values'][i].resample('D').mean()
 
 #%%
+import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
+def get_continuous_segments(masked_series):
+    segments = []
+    current_segment = []
+
+    for idx, val in masked_series.items():
+        if pd.notna(val):
+            current_segment.append((idx, val))
+        elif current_segment:
+            # End of a segment
+            segment_df = pd.Series(dict(current_segment))
+            segments.append(segment_df)
+            current_segment = []
+
+    # Add last segment if it exists
+    if current_segment:
+        segment_df = pd.Series(dict(current_segment))
+        segments.append(segment_df)
+
+    return segments
+# Define the last 30 days period
+end_date = pd.to_datetime('2024-11-10')
+start_date = end_date - pd.Timedelta(days=15)
+
+# Create the plot
+fig, ax = plt.subplots(figsize=(14, 6))
+
+colors = {'30': 'blue', '61': 'green'}
+
+for i in ['30', '61']:
+    original = pd.read_excel(folder_path + 'Delta_Temp_Brice_2024.xlsx',
+                             sheet_name=f'RM{i}', parse_dates=True, index_col=0)
+    original = original.reindex(pd.date_range(start='2024-06-01', end='2024-11-10', freq='h'))
+
+    # Focus on the last 30 days
+    filled = data_dt[i].loc[start_date:end_date,['11.5']]
+    raw = original.loc[start_date:end_date]
+
+    for col in filled.columns:
+        # Plot original raw values
+        ax.plot(raw.index, raw[col], label=f'Raw RM{i} - {col}', color=colors[i], linestyle='-', alpha=0.9)
+
+        # Mask: where original is NaN and filled has data
+        mask = raw[col].isna() & filled[col].notna()
+        masked_series = filled[col].where(mask)
+
+        # Get separate continuous segments
+        segments = get_continuous_segments(masked_series)
+
+        for seg in segments:
+            ax.plot(seg.index, seg.values, label=f'Filled RM{i} - {col}', color=colors[i], linestyle='--', marker='o',
+                    markersize=3)
+# Format the x-axis
+ax.xaxis.set_major_formatter(mdates.DateFormatter('%b-%d'))
+ax.xaxis.set_major_locator(mdates.DayLocator(interval=2))
+
+plt.title('Delta T (°C) - Last 30 Days: Filled (Moving Average - previous 7 days) vs Raw')
+plt.xlabel('Date')
+plt.ylabel('Temperature Change (°C)')
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
+
+#%%
 for j in ['GCD']:
     bp_name = f'by_temp_{j}.csv'
     tur_name = f'pen_temp_{j}.csv'
@@ -185,7 +251,7 @@ import numpy as np
 inputs, results, duals = {}, {}, {}
 cfs_to_af = 1/12.1
 # for rm in [0, 15, 30, 61]:
-for rm in [30, 61]:
+for rm in [61]:
     inputs[rm], results[rm], duals[rm] = {}, {}, {}
     trace_list = [f"X{year}" for year in range(2020, 1991 - 1, -1)]
     for trace in trace_list:
@@ -245,68 +311,68 @@ delete_app_log_files(base_directory)
 
 
 
-# #%%
-# import os
-# from datetime import datetime
-# import pandas as pd
-# # Define the root directory
-# root_dir = 'C:\\Projects\\Github\\TempRegPy\\Results'
-#
-# # Initialize the main dictionary to store data
-# river_miles_data = {}
-#
-# # Traverse the directory structure
-# for file in ['q_bp.csv', 'q_tur.csv']:
-#     river_miles_data[file] = {}
-#     for rm_folder in os.listdir(root_dir):
-#         rm_path = os.path.join(root_dir, rm_folder)
-#         if os.path.isdir(rm_path):
-#             # Initialize a dictionary for each river mile
-#             river_miles_data[file][rm_folder] = {}
-#
-#             for trace_folder in os.listdir(rm_path):
-#                 trace_path = os.path.join(rm_path, trace_folder)
-#                 if os.path.isdir(trace_path):
-#                     # Initialize a dictionary for each trace
-#                     river_miles_data[file][rm_folder][trace_folder] = {}
-#
-#                     for date_folder in os.listdir(trace_path):
-#                         date_path = os.path.join(trace_path, date_folder)
-#                         if os.path.isdir(date_path):
-#                             # Parse the date from the folder name
-#                             date = datetime.strptime(date_folder, '%Y-%m-%d')
-#                             river_miles_data[file][rm_folder][trace_folder][date] = {}
-#                             # Read each CSV file in the date folder
-#                             for csv_file in os.listdir(date_path):
-#                                 if csv_file.endswith(file):
-#                                     file_path = os.path.join(date_path, csv_file)
-#                                     df = pd.read_csv(file_path)
-#
-#                                     hourly_dates = pd.date_range(start=date, periods=24, freq='h')
-#
-#                                     # Assign the hourly dates to the Date column
-#                                     df.index = hourly_dates
-#
-#                                     # Store the DataFrame in the dictionary
-#                                     river_miles_data[file][rm_folder][trace_folder][date] = df.loc[:,'GCD']
-#
-#
-# results = {}
-# for f in river_miles_data.keys():
-#     results[f] = {}
-#     for rm in river_miles_data[f].keys():
-#         results[f][rm] = pd.DataFrame()
-#         for tr in river_miles_data[f][rm].keys():
-#             tmp = pd.concat(river_miles_data[f][rm][tr].values(), axis=0)
-#             df = pd.DataFrame(tmp.copy())
-#             df.columns = [tr]
-#             results[f][rm] = pd.concat([results[f][rm], df], axis=1)
-#         if f == 'q_bp.csv':
-#             var = 'q_bp'
-#         elif f == 'q_tur.csv':
-#             var = 'q_tur'
-#         # results[f][rm].to_csv(f'{var}_{rm}.csv', index=True)
-#
+#%%
+import os
+from datetime import datetime
+import pandas as pd
+# Define the root directory
+root_dir = 'C:\\Projects\\Github\\TempRegPy\\Results'
+
+# Initialize the main dictionary to store data
+river_miles_data = {}
+
+# Traverse the directory structure
+for file in ['q_bp.csv', 'q_tur.csv']:
+    river_miles_data[file] = {}
+    for rm_folder in os.listdir(root_dir):
+        rm_path = os.path.join(root_dir, rm_folder)
+        if os.path.isdir(rm_path):
+            # Initialize a dictionary for each river mile
+            river_miles_data[file][rm_folder] = {}
+
+            for trace_folder in os.listdir(rm_path):
+                trace_path = os.path.join(rm_path, trace_folder)
+                if os.path.isdir(trace_path):
+                    # Initialize a dictionary for each trace
+                    river_miles_data[file][rm_folder][trace_folder] = {}
+
+                    for date_folder in os.listdir(trace_path):
+                        date_path = os.path.join(trace_path, date_folder)
+                        if os.path.isdir(date_path):
+                            # Parse the date from the folder name
+                            date = datetime.strptime(date_folder, '%Y-%m-%d')
+                            river_miles_data[file][rm_folder][trace_folder][date] = {}
+                            # Read each CSV file in the date folder
+                            for csv_file in os.listdir(date_path):
+                                if csv_file.endswith(file):
+                                    file_path = os.path.join(date_path, csv_file)
+                                    df = pd.read_csv(file_path)
+
+                                    hourly_dates = pd.date_range(start=date, periods=24, freq='h')
+
+                                    # Assign the hourly dates to the Date column
+                                    df.index = hourly_dates
+
+                                    # Store the DataFrame in the dictionary
+                                    river_miles_data[file][rm_folder][trace_folder][date] = df.loc[:,'GCD']
+
+
+results = {}
+for f in river_miles_data.keys():
+    results[f] = {}
+    for rm in river_miles_data[f].keys():
+        results[f][rm] = pd.DataFrame()
+        for tr in river_miles_data[f][rm].keys():
+            tmp = pd.concat(river_miles_data[f][rm][tr].values(), axis=0)
+            df = pd.DataFrame(tmp.copy())
+            df.columns = [tr]
+            results[f][rm] = pd.concat([results[f][rm], df], axis=1)
+        if f == 'q_bp.csv':
+            var = 'q_bp'
+        elif f == 'q_tur.csv':
+            var = 'q_tur'
+        results[f][rm].to_csv(f'{var}_{rm}.csv', index=True)
+
 
 
 # import matplotlib.pyplot as plt
