@@ -142,3 +142,20 @@ plt.tight_layout()
 plt.show()
 
 print(result['TTD'].sum())
+
+#%%
+import numpy as np
+h = 15
+alpha = 0.08
+V = 200000
+A = 200000
+rho = 1000
+cp = 4168
+T_air = np.array([10, 14, 18, 22, 25, 20, 16, 12, 10])
+T_w = 12
+I = np.array([0, 100, 200, 400, 800, 1200, 400, 200, 50])
+f = np.array([0, 0.05, 0.1, 0.2, 0.3, 0.2, 0.1, 0.05, 0])
+
+dT = (alpha*I+h*(T_air-T_w))*A/V/rho/cp*3600
+
+dT_tot = (dT*f).sum()
