@@ -928,9 +928,9 @@ def build_and_run(inputs):
 
             for key, value in results.items():
                 if isinstance(value, pd.DataFrame):
-                    value.to_csv(f'{simulation_folder_path + "\\"}{key}.csv', index=False)
+                    value.to_csv(f'{simulation_folder_path + "/"}{key}.csv', index=False)
                 else:
-                    with open(f'{simulation_folder_path + "\\"}{key}.csv', 'w') as f:
+                    with open(f'{simulation_folder_path + "/"}{key}.csv', 'w') as f:
                         f.write(str(value))
 
             def get_lmp_values_for_plant(plant_name, plant_to_node, lmp_values):
@@ -948,15 +948,15 @@ def build_and_run(inputs):
                 for unit_name in inputs['plants']:
                     plot_data = pd.concat([results['q_bp'].loc[:, unit_name], results['q_tur'].loc[:, unit_name]], axis=1).set_axis(['q_bp', 'q_tur'], axis=1).clip(lower=0)
                     plot_data['LMP'] = get_lmp_values_for_plant(unit_name, inputs['plant_to_node'], inputs['LMP_values'])
-                    plot_dispatch(plot_data[['q_bp','q_tur']], plot_data[['LMP']], save_fig=True, fig_name=simulation_folder_path + '\\plot', unit_name=unit_name)
+                    plot_dispatch(plot_data[['q_bp','q_tur']], plot_data[['LMP']], save_fig=True, fig_name=simulation_folder_path + '/plot', unit_name=unit_name)
                     df_dispatch = inputs['Demand_values'].copy().T
                     df_dispatch = pd.concat([df_dispatch, results['p_tur']], axis=1)
-                    plot_load_serving(df_dispatch,save_fig=True, fig_name=simulation_folder_path + '\\pload_serving', unit_name=unit_name, node_name='Node 1')
+                    plot_load_serving(df_dispatch,save_fig=True, fig_name=simulation_folder_path + '/pload_serving', unit_name=unit_name, node_name='Node 1')
 
         else:
             logger.error('The problem does not have an optimal solution. Please review and revise the input data.')
 
-        copy_file_to_destination('TempRegPy\\app.log', simulation_folder_path)
+        copy_file_to_destination('TempRegPy/app.log', simulation_folder_path)
 
         return inputs, results, duals
 
