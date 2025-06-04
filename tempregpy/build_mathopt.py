@@ -933,6 +933,21 @@ def build_and_run(inputs):
                     with open(f'{simulation_folder_path + "/"}{key}.csv', 'w') as f:
                         f.write(str(value))
 
+            INPUTS_TO_SAVE = [
+                "LMP_values",
+                "Demand_values",
+                "T_bp_values",
+                "T_tur_values",
+                "cnstr_temp_t01t24",
+                "T_gauge_hourly_max_values",
+                "T_gauge_hourly_min_values",
+                "dT_hourly_values"
+            ]
+
+            for key in INPUTS_TO_SAVE:
+                the_input = inputs[key]
+                value.to_csv(f'{simulation_folder_path + "/INPUT_"}{key}.csv', index=False)
+
             def get_lmp_values_for_plant(plant_name, plant_to_node, lmp_values):
                 # Generate the plant_node_mapping from plant_to_node
                 plant_node_mapping = {entry.split(' - ')[0]: entry.split(' - ')[1] for entry in plant_to_node}
@@ -961,5 +976,7 @@ def build_and_run(inputs):
         return inputs, results, duals
 
     except Exception as e:
+        import traceback
+        print(traceback.format_exc())
         logger.error(f"An unexpected error occurred: {e}. The problem does not have an optimal solution. Please review "
                      f"and revise the input data.")
