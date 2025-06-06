@@ -1,12 +1,15 @@
+import sys
+import os
+import logging
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 from scipy.spatial import ConvexHull
 import pandas as pd
-from tempregpy.logging_config import *
-import sys
-import os
+
 from .constants import *
+
+logger = logging.getLogger(__name__)
 
 
 class HullComputation:
@@ -70,9 +73,9 @@ class HullComputation:
 
     def print_plane_equations(self):
         label = self.label
-        logger.info(f"Plane Equations for {label}:")
+        logger.debug(f"Plane Equations for {label}:")
         for i, ((a, b, c, d), sign) in enumerate(zip(self.plane_equations, self.inequality_signs)):
-            logger.info(f"Plane {i}: {a:.3f}x + {b:.3f}y + {c:.3f}z {sign} {d:.3f}")
+            logger.debug(f"Plane {i}: {a:.3f}x + {b:.3f}y + {c:.3f}z {sign} {d:.3f}")
 
 def gauge_hulls(inputs, rd):
     x = np.linspace(inputs['Q_hulls'].loc[rd, 'Qmin'], inputs['Q_hulls'].loc[rd, 'Qmax'], 2)

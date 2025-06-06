@@ -1,6 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from .logging_config import *
+import logging
 
 
 def plot_dispatch(df_dispatch, df_lmp, save_fig=False, fig_name='', unit_name=''):

@@ -1,11 +1,11 @@
 from .functions import *
-from .logging_config import *
 from .plotting import *
 from .utils import *
 # from .build_pywraplp import *
 from .build_mathopt import *
 from ._version import *
 from .constants import *
+from .wapa import *
 
 __appname__ = "TempRegPy"
 __version__ = "0.1.1"
