@@ -6,14 +6,12 @@ import pandas as pd
 import tempregpy as trp
 from ortools.math_opt.python import mathopt
 from tempregpy.model import prepare_model, parse_model_results
-# from tempregpy.wapa import export_results_to_excel, load_inputs_from_excel
 import tempregpy.wapa as wapa
 
 TIMESTAMP = datetime.datetime.now()
-RESULTS_DIR = f"./results_{TIMESTAMP.strftime('%Y%m%d_%H%M%S')}/"
-
-# TODO configure logger here...
-# TODO use global logger in model run
+print(TIMESTAMP)
+# RESULTS_DIR = f"./results_{TIMESTAMP.strftime('%Y%m%d_%H%M%S')}/"
+RESULTS_DIR = f"./Results - {TIMESTAMP.strftime('%b %d, %Y %I.%M.%S %p')}/"
 
 def get_console_handler():
     class SingleLetterFilter(logging.Filter):
@@ -88,6 +86,10 @@ solve_result = mathopt.solve(model, mathopt.SolverType.HIGHS, params=params)
 results = parse_model_results(inputs, solve_result, variables)
 
 logger.info("Model solved successfully. Exporting results to Excel...")
-wapa.export_results_to_excel(inputs, results, os.path.join(RESULTS_DIR, "WAPA_Results.xlsx"))
+wapa.export_results_to_excel(excel_data, inputs, results, os.path.join(RESULTS_DIR, "WAPA_Results.xlsx"))
+
+with open("./output.pkl", "wb") as f:
+    import pickle
+    pickle.dump((excel_data, inputs, results), f)
 
 logger.info(f"Results saved in {os.path.abspath(RESULTS_DIR)}")

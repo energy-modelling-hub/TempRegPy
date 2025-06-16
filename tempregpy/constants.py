@@ -1,1 +1,1 @@
-cfs_to_af = 1 / 12.1
+CFS_TO_AFH = 1 / 12.1

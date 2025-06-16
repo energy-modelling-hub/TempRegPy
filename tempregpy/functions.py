@@ -309,20 +309,20 @@ def load_config(file_path):
                 initialize_inputs_with_index(plant_input_keys, config, par_name, ['Name']+inputs['daily_horizon'], inputs, 'river_nodes', 0)
 
             plant_input_keys_with_conversion = {
-                'Q_max_daily_change': cfs_to_af,
-                'WaterToPowerConversion': 1 / cfs_to_af,
+                'Q_max_daily_change': CFS_TO_AFH,
+                'WaterToPowerConversion': 1 / CFS_TO_AFH,
             }
             initialize_inputs_with_conversion(plant_input_keys_with_conversion, config, par_name, ['Name']+inputs['daily_horizon'], inputs, 'river_nodes')
 
             plant_keys_with_conversion = {
-                'Q_bp_ramp_down_max': cfs_to_af,
-                'Q_bp_ramp_up_max': cfs_to_af,
-                'Q_tur_ramp_down_max': cfs_to_af,
-                'Q_tur_ramp_up_max': cfs_to_af,
-                'Q_tot_ramp_up_max': cfs_to_af,
-                'Q_tot_ramp_down_max': cfs_to_af,
-                'Q_gg_ramp_up_max': cfs_to_af,
-                'Q_gg_ramp_down_max': cfs_to_af,
+                'Q_bp_ramp_down_max': CFS_TO_AFH,
+                'Q_bp_ramp_up_max': CFS_TO_AFH,
+                'Q_tur_ramp_down_max': CFS_TO_AFH,
+                'Q_tur_ramp_up_max': CFS_TO_AFH,
+                'Q_tot_ramp_up_max': CFS_TO_AFH,
+                'Q_tot_ramp_down_max': CFS_TO_AFH,
+                'Q_gg_ramp_up_max': CFS_TO_AFH,
+                'Q_gg_ramp_down_max': CFS_TO_AFH,
                 'bp_ramp_down_cyc': 1,
                 'bp_ramp_up_cyc': 1,
                 'bp_ramp_tot_cyc': 1,
@@ -331,14 +331,14 @@ def load_config(file_path):
                                               inputs, 'river_nodes')
             # Hourly values
             plant_hourly_keys = {
-                'Q_bp_min_values': cfs_to_af,
-                'Q_bp_max_values': cfs_to_af,
-                'Q_tur_min_values': cfs_to_af,
-                'Q_tur_max_values': cfs_to_af,
-                'Q_tot_min_values': cfs_to_af,
-                'Q_tot_max_values': cfs_to_af,
-                'Q_gg_min_values': cfs_to_af,
-                'Q_gg_max_values': cfs_to_af,
+                'Q_bp_min_values': CFS_TO_AFH,
+                'Q_bp_max_values': CFS_TO_AFH,
+                'Q_tur_min_values': CFS_TO_AFH,
+                'Q_tur_max_values': CFS_TO_AFH,
+                'Q_tot_min_values': CFS_TO_AFH,
+                'Q_tot_max_values': CFS_TO_AFH,
+                'Q_gg_min_values': CFS_TO_AFH,
+                'Q_gg_max_values': CFS_TO_AFH,
                 'T_bp_values': 1,
                 'T_tur_values': 1,
                 'P_tur_min_values': 1,
@@ -348,8 +348,8 @@ def load_config(file_path):
             initialize_inputs_with_conversion(plant_hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'river_nodes')
 
             river_connection_hourly_keys = {
-                'Flow_i_j_max': cfs_to_af,
-                'Flow_i_j_min': cfs_to_af,
+                'Flow_i_j_max': CFS_TO_AFH,
+                'Flow_i_j_min': CFS_TO_AFH,
                 'T_source_hourly_max_values': 1,
                 'T_source_hourly_min_values': 1,
                 'T_sink_hourly_max_values': 1,
@@ -421,14 +421,14 @@ def load_config(file_path):
             ###################
             # Hourly values
             cost_keys = {
-                'C_bp_ramp_up': 1/cfs_to_af,
-                'C_bp_ramp_down': 1/cfs_to_af,
-                'C_tur_ramp_up': 1/cfs_to_af,
-                'C_tur_ramp_down': 1/cfs_to_af,
-                'C_tot_ramp_up': 1/cfs_to_af,
-                'C_tot_ramp_down': 1/cfs_to_af,
-                'C_gg_ramp_up': 1 / cfs_to_af,
-                'C_gg_ramp_down': 1 / cfs_to_af,
+                'C_bp_ramp_up': 1/CFS_TO_AFH,
+                'C_bp_ramp_down': 1/CFS_TO_AFH,
+                'C_tur_ramp_up': 1/CFS_TO_AFH,
+                'C_tur_ramp_down': 1/CFS_TO_AFH,
+                'C_tot_ramp_up': 1/CFS_TO_AFH,
+                'C_tot_ramp_down': 1/CFS_TO_AFH,
+                'C_gg_ramp_up': 1 / CFS_TO_AFH,
+                'C_gg_ramp_down': 1 / CFS_TO_AFH,
             }
             initialize_inputs_with_conversion(cost_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes')
 

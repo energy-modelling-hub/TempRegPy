@@ -838,7 +838,7 @@ def build_and_run(inputs):
                     plant = inputs['river_nodes'][p]
                     for d in range(len(inputs['daily_horizon'])):
                         day = inputs['daily_horizon'][d]
-                        results[var].loc[day,plant] = result.variable_values(variables[var][p][d])/cfs_to_af
+                        results[var].loc[day,plant] = result.variable_values(variables[var][p][d])/CFS_TO_AFH
 
             for var in ['q_bp', 'q_tur', 'q_tot', 'q_gg', 'q_source', 'q_sink', 'q_in_flow', 'q_out_flow', 'X',
                         'q_bp_ramp_up', 'q_bp_ramp_down', 'q_tur_ramp_up', 'q_tur_ramp_down', 'q_tot_ramp_up',
@@ -846,7 +846,7 @@ def build_and_run(inputs):
                 results[var] = {}
                 for p in range(len(inputs['river_nodes'])):
                     results[var][inputs['river_nodes'][p]] = result.variable_values(variables[var][p])
-                results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])/cfs_to_af
+                results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])/CFS_TO_AFH
             for var in ['p_tur', 'T_gg']:
                 results[var] = {}
                 for p in range(len(inputs['river_nodes'])):
@@ -864,7 +864,7 @@ def build_and_run(inputs):
                     for j in range(len(inputs['river_nodes'])):
                         results[var][inputs['river_nodes'][i],inputs['river_nodes'][j]] = result.variable_values(variables[var][i][j])
                 results[var] = {f"{k[0]} - {k[1]}": v for k, v in results[var].items()}
-                results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])/cfs_to_af
+                results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])/CFS_TO_AFH
             results['T_plant'] = (results['q_bp']*inputs['T_bp_values'].T + results['q_tur']*inputs['T_tur_values'].T)/(results['q_bp'] + results['q_tur'])
 
             def compute_gauge_temperatures(t_plant_df, q_flow_df, dt_hourly_values_df):
