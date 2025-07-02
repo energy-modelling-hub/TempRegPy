@@ -5,8 +5,9 @@ import datetime
 import pandas as pd
 import tempregpy as trp
 from ortools.math_opt.python import mathopt
-from tempregpy.model import prepare_model, parse_model_results
+# from tempregpy.model import prepare_model, parse_model_results
 import tempregpy.wapa as wapa
+from tempregpy.model import Model, ModelConfig, parse_model_results
 
 TIMESTAMP = datetime.datetime.now()
 print(TIMESTAMP)
@@ -80,14 +81,18 @@ RESULTS_DIR = inputs["sim_folder"]
 if not os.path.exists(RESULTS_DIR):
     os.makedirs(RESULTS_DIR)
 
+
+config = ModelConfig(
+    name="Bypass Optimization",
+    solver_type=mathopt.SolverType.HIGHS
+)
+
+model = Model(config)
 logger.info("Preparing model with inputs...")
-model, variables, constraints = prepare_model(inputs)
+model.populate_from_inputs(inputs)
+solve_result = model.solve()
 
-params = mathopt.SolveParameters(enable_output=True, time_limit=datetime.timedelta(seconds=inputs["sim_time"]))
-logger.info("Starting MathOpt solver...")
-solve_result = mathopt.solve(model, mathopt.SolverType.HIGHS, params=params)
-
-results = parse_model_results(inputs, solve_result, variables)
+results = parse_model_results(inputs, solve_result, model.variables)
 with open("./output.pkl", "wb") as f:
     import pickle
     pickle.dump((excel_data, inputs, results), f)
