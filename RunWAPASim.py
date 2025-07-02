@@ -64,8 +64,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-if not os.path.exists(RESULTS_DIR):
-    os.makedirs(RESULTS_DIR)
+
 
 WAPA_INPUT_EXCEL_FILE = "./WAPA Inputs.xlsm"
 
@@ -76,20 +75,57 @@ excel_data = excel_file.parse("Inputs")
 
 inputs = wapa.load_inputs_from_excel(excel_data)
 
+RESULTS_DIR = inputs["sim_folder"]
+
+if not os.path.exists(RESULTS_DIR):
+    os.makedirs(RESULTS_DIR)
+
 logger.info("Preparing model with inputs...")
 model, variables, constraints = prepare_model(inputs)
 
-params = mathopt.SolveParameters(enable_output=True, time_limit=datetime.timedelta(seconds=10))
+params = mathopt.SolveParameters(enable_output=True, time_limit=datetime.timedelta(seconds=inputs["sim_time"]))
 logger.info("Starting MathOpt solver...")
 solve_result = mathopt.solve(model, mathopt.SolverType.HIGHS, params=params)
 
 results = parse_model_results(inputs, solve_result, variables)
-
-logger.info("Model solved successfully. Exporting results to Excel...")
-wapa.export_results_to_excel(excel_data, inputs, results, os.path.join(RESULTS_DIR, "WAPA_Results.xlsx"))
-
 with open("./output.pkl", "wb") as f:
     import pickle
     pickle.dump((excel_data, inputs, results), f)
 
+def get_lmp_values_for_plant(plant_name, plant_to_node, lmp_values):
+    # Generate the plant_node_mapping from plant_to_node
+    plant_node_mapping = {entry.split(' - ')[0]: entry.split(' - ')[1] for entry in plant_to_node}
+
+    # Get the node name for the given plant
+    node_name = plant_node_mapping.get(plant_name)
+    if node_name:
+        return lmp_values.loc[node_name]
+    else:
+        raise ValueError(f"Plant {plant_name} not found in the mapping.")
+
+
+# if inputs['plt_show']:
+for unit_name in inputs['plants']:
+    plot_data = pd.concat([results['q_bp'].loc[:, unit_name], results['q_tur'].loc[:, unit_name]], axis=1).set_axis(['q_bp', 'q_tur'], axis=1).clip(lower=0)
+    plot_data['LMP'] = get_lmp_values_for_plant(unit_name, inputs['plant_to_node'], inputs['LMP_values'])
+    trp.plot_dispatch(plot_data[['q_bp','q_tur']], plot_data[['LMP']], save_fig=True, fig_name=RESULTS_DIR + '/plot.png', unit_name=unit_name)
+    df_dispatch = inputs['Demand_values'].copy().T
+    df_dispatch = pd.concat([df_dispatch, results['p_tur']], axis=1)
+    trp.plot_load_serving(df_dispatch,save_fig=True, fig_name=RESULTS_DIR + '/pload_serving.png', unit_name=unit_name, node_name='Node 1')
+
+
+logger.info("Model solved successfully. Exporting results to Excel...")
+wapa.export_results_to_excel(excel_data, inputs, results, os.path.join(RESULTS_DIR, "WAPA_Results.xlsx"))
+
+import glob
+png_files = glob.glob(os.path.join(RESULTS_DIR, "*.png"))
+
+# for file_path in png_files:
+#     try:
+#         os.remove(file_path)
+#         print(f"Removed: {file_path}")
+#     except OSError as e:
+#         print(f"Error removing {file_path}: {e}")
+
 logger.info(f"Results saved in {os.path.abspath(RESULTS_DIR)}")
+

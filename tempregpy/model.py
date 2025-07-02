@@ -7,7 +7,7 @@ from .plotting import *
 from .utils import *
 from ortools.math_opt.python import mathopt
 
-CFS_TO_AFH = 12.1
+CFS_TO_AF = 1/12.1
 
 def prepare_model(inputs):
 

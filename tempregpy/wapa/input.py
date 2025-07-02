@@ -240,18 +240,18 @@ def initialize_inputs_with_index(keys, config, par_name, columns, inputs, index_
         if key in config[par_name].values:
             inputs[key] = config.loc[config[par_name] == key, columns].set_index('Name').reindex(inputs[index_key]).infer_objects(copy=False).fillna(default_value)
         else:
-            log_error(key)
+            # error
+            pass
+
 
 def initialize_inputs_with_conversion(keys_with_conversion, config, par_name, columns, inputs, index_key, default_value=0):
     for key, factor in keys_with_conversion.items():
         if key in config[par_name].values:
             inputs[key] = config.loc[config[par_name] == key, columns].set_index('Name').reindex(inputs[index_key]).infer_objects(copy=False).fillna(default_value) * factor
         else:
-            log_error(key)
+            # error
             inputs[key] = pd.DataFrame()
 
-def log_error(key):
-    logger.error(f'There is no such key {key}')
 
 def load_inputs_from_excel(config):
     try:

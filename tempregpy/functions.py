@@ -252,7 +252,8 @@ def initialize_inputs_with_conversion(keys_with_conversion, config, par_name, co
             inputs[key] = pd.DataFrame()
 
 def log_error(key):
-    logger.error(f'There is no such key {key}')
+    # logger.error(f'There is no such key {key}')
+    pass
 
 
 def load_config(file_path):

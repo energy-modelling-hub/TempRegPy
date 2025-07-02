@@ -4,9 +4,9 @@ import numpy as np
 import pandas as pd
 import os
 
-CF_PER_AF = 43560.02
 
 def draw_table(workbook, worksheet, name, columns, position):
+    
     HEADER_FORMAT = workbook.add_format({
         'bold': True, 
         'font_color': 'black', 
@@ -292,7 +292,7 @@ def append_input_sheet(excel, workbook):
     draw_table(workbook, worksheet, "hourly", HOURLY_COLUMNS, HOURLY_TABLE_ORIGIN)
     worksheet.set_column(0, 0, 15)
 
-def export_results_to_excel(excel, inputs, results, file_path):
+def export_results_to_excel(excel, inputs, results, file_path, include_plots=True):
     workbook = xlsxwriter.Workbook(file_path)
 
     START_TIMESTAMP = excel.loc[10,"Single input"]
@@ -438,7 +438,7 @@ def export_results_to_excel(excel, inputs, results, file_path):
             "label": "Turbine Ramp Down",
             "unit": "CFS",
             "internal_key": "q_tur_ramp_down",
-            "data": results["q_tur_ramp_down"].loc[:, node],
+            "data": results["q_tur_ramp_down"].loc[:, node], 
         },{
             "label": "Turbine Ramp Up",
             "unit": "CFS",
@@ -538,5 +538,11 @@ def export_results_to_excel(excel, inputs, results, file_path):
 
 
     append_input_sheet(excel, workbook)
+
+    if include_plots:
+        worksheet = workbook.add_worksheet("Plots")
+
+        worksheet.insert_image(0, 0, inputs["sim_folder"] + "/plot.png.png")
+        worksheet.insert_image(30, 0, inputs["sim_folder"] + "/pload_serving.png.png")
 
     workbook.close()

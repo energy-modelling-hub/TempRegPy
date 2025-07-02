@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import logging
 
+logger = logging.getLogger(__name__)
+
 
 def plot_dispatch(df_dispatch, df_lmp, save_fig=False, fig_name='', unit_name=''):
     fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(12, 6), sharex=True)
