@@ -1,4 +1,3 @@
-from .plotting import *
 from .utils import *
 # from .build_pywraplp import *
 from ._version import *

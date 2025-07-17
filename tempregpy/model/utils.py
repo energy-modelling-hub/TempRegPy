@@ -16,7 +16,7 @@ def parse_model_results(inputs, result, variables):
                 day = inputs['daily_horizon'][d]
                 results[var].loc[day,plant] = result.variable_values(variables[var][p][d])/CFS_TO_AFH
 
-    for var in ['q_bp', 'q_tur', 'q_tot', 'q_gg', 'q_source', 'q_sink', 'q_in_flow', 'q_out_flow', 'X',
+    for var in ['q_bp', 'q_tur', 'q_tot', 'q_gg', 'q_source', 'q_sink', 'q_in_flow', 'q_out_flow', 'QT_latent',
                 'q_bp_ramp_up', 'q_bp_ramp_down', 'q_tur_ramp_up', 'q_tur_ramp_down', 'q_tot_ramp_up',
                 'q_tot_ramp_down', 'q_gg_ramp_up', 'q_gg_ramp_down']:
         results[var] = {}

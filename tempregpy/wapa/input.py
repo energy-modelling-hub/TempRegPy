@@ -435,14 +435,7 @@ def load_inputs_from_excel(config):
         inputs['C_sink'].loc[inputs['sinks']] = 0
         inputs['Q_sink_max'] = pd.DataFrame(0, index=inputs['river_nodes'], columns=['Single input'])
         inputs['Q_sink_max'].loc[inputs['sinks']] = 10000
-        inputs['Q_hulls'] = {}
-        for i in inputs['time_horizon']:
-            inputs['Q_hulls'][i] = pd.DataFrame(index=inputs['river_nodes'], columns=['Qmin', 'Qmax', 'Tmin', 'Tmax'])
-            inputs['Q_hulls'][i].loc[:, 'Qmin'] = inputs['Q_gg_min_values'][i]
-            inputs['Q_hulls'][i].loc[:, 'Qmax'] = inputs['Q_gg_max_values'][i]
-            inputs['Q_hulls'][i].loc[:, 'Tmin'] = inputs['T_gauge_hourly_min_values'][i]
-            inputs['Q_hulls'][i].loc[:, 'Tmax'] = inputs['T_gauge_hourly_max_values'][i]
-
+        
         keys = ['Q_tot_daily','Q_max_daily_change','WaterToPowerConversion','T_gauge_daily','dT_daily']
         for key in keys:
             inputs[key].columns = [
