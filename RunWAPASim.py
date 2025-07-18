@@ -1,7 +1,10 @@
 import os
 import logging
+import sys
 import colorlog
 import datetime
+import pathlib
+from matplotlib import pyplot as plt
 import pandas as pd
 from ortools.math_opt.python import mathopt
 # from tempregpy.model import prepare_model, parse_model_results
@@ -9,7 +12,7 @@ import tempregpy.wapa as wapa
 from tempregpy.model import *
 from tempregpy.wapa.plots import plot_dispatch, plot_load_serving
 import matplotlib
-matplotlib.use('Agg')
+# matplotlib.use('Agg')
 
 
 TIMESTAMP = datetime.datetime.now()
@@ -89,15 +92,20 @@ config = ModelConfig(
     name="Bypass Optimization",
     solver_type=mathopt.SolverType.HIGHS,
     product_linearization=ProductLinearizationConfig(
-        method=ProductLinearizationMethod.SINGLE,
-        N=3,
+        method=ProductLinearizationMethod.SUM_OF_CONVEX,
+        N=1,
     )
 )
 
 model = Model(config)
 logger.info("Preparing model with inputs...")
 model.populate_from_inputs(inputs)
-solve_result = model.solve(time_limit=datetime.timedelta(seconds=60))
+
+try:
+    solve_result = model.solve(time_limit=datetime.timedelta(seconds=5))
+except KeyboardInterrupt as e:
+    logger.error("Model solving interrupted by user.")
+    sys.exit(1)
 
 results = parse_model_results(inputs, solve_result, model.variables)
 with open("./output.pkl", "wb") as f:
@@ -116,29 +124,29 @@ def get_lmp_values_for_plant(plant_name, plant_to_node, lmp_values):
         raise ValueError(f"Plant {plant_name} not found in the mapping.")
 
 
-# if inputs['plt_show']:
+
 for unit_name in inputs['plants']:
     plot_data = pd.concat([results['q_bp'].loc[:, unit_name], results['q_tur'].loc[:, unit_name]], axis=1).set_axis(['q_bp', 'q_tur'], axis=1).clip(lower=0)
     plot_data['LMP'] = get_lmp_values_for_plant(unit_name, inputs['plant_to_node'], inputs['LMP_values'])
-    fig = plot_dispatch(plot_data[['q_bp','q_tur']], plot_data[['LMP']], save_fig=True, fig_name=RESULTS_DIR + '/plot.png', unit_name=unit_name)
+    fig = plot_dispatch(plot_data[['q_bp','q_tur']], plot_data[['LMP']], unit_name=unit_name)
+    fig.savefig(os.path.join(RESULTS_DIR, f"{unit_name}_dispatch.png"), format='png')
+
+    if inputs['plt_show']:
+        logger.warn(f"Showing \"Dispatch\" plot for {unit_name}")
+        plt.show()
 
     df_dispatch = inputs['Demand_values'].copy().T
     df_dispatch = pd.concat([df_dispatch, results['p_tur']], axis=1)
-    fig = plot_load_serving(df_dispatch,save_fig=True, fig_name=RESULTS_DIR + '/pload_serving.png', unit_name=unit_name, node_name='Node 1')
+    fig = plot_load_serving(df_dispatch, unit_name=unit_name, node_name='Node 1')
+    fig.savefig(os.path.join(RESULTS_DIR, f"{unit_name}_load_serving.png"), format='png')
+
+    if inputs['plt_show']:
+        logger.warn(f"Showing \"Load Serving\" plot for {unit_name}")
+        plt.show()
 
 
 logger.info("Model solved successfully. Exporting results to Excel...")
 wapa.export_results_to_excel(excel_data, inputs, results, os.path.join(RESULTS_DIR, "WAPA_Results.xlsx"))
-
-import glob
-png_files = glob.glob(os.path.join(RESULTS_DIR, "*.png"))
-
-# for file_path in png_files:
-#     try:
-#         os.remove(file_path)
-#         print(f"Removed: {file_path}")
-#     except OSError as e:
-#         print(f"Error removing {file_path}: {e}")
 
 logger.info(f"Results saved in {os.path.abspath(RESULTS_DIR)}")
 

@@ -4,7 +4,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-def plot_dispatch(df_dispatch, df_lmp, save_fig=False, fig_name='', unit_name=''):
+def plot_dispatch(df_dispatch, df_lmp, unit_name=''):
     fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(12, 6), sharex=True)
 
     # Plot the stacked area chart on the primary y-axis of the first subplot
@@ -53,12 +53,6 @@ def plot_dispatch(df_dispatch, df_lmp, save_fig=False, fig_name='', unit_name=''
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left', fontsize=12, title='Categories', title_fontsize='14')
 
-    # Show plot
-    plt.tight_layout()
-    if save_fig is True:
-        plt.savefig(fig_name + '.png', dpi=300)
-        logger.info('Saved figure ' + fig_name + '.png')
-    plt.show()
     return fig
 
 def plot_temperature_analysis(df_dispatch, df_t, df_lmp, save_fig=False, fig_name=''):
@@ -175,7 +169,7 @@ def plot_temperature_analysis(df_dispatch, df_t, df_lmp, save_fig=False, fig_nam
     plt.show()
 
 
-def plot_load_serving(df_dispatch, save_fig=False, fig_name='', unit_name='',node_name=''):
+def plot_load_serving(df_dispatch, unit_name='',node_name=''):
     fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(12, 6), sharex=True)
 
     # Plot the stacked area chart on the primary y-axis of the first subplot
@@ -200,10 +194,4 @@ def plot_load_serving(df_dispatch, save_fig=False, fig_name='', unit_name='',nod
     # Grid for better visualization
     ax1.grid(True, linestyle='--', alpha=0.5)
 
-    # Show plot
-    plt.tight_layout()
-    if save_fig is True:
-        plt.savefig(fig_name + '.png', dpi=300)
-        logger.info('Saved figure ' + fig_name + '.png')
-    plt.show()
     return fig

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 import enum
 
 
+
 @dataclass
 class ModelConfig:
     name: str
@@ -817,6 +818,35 @@ class Model():
                                                                 name = f'Maximum daily average temperature (OutFlow) for {inputs['river_nodes'][p]} at {f'D{d + 1:02}'}'
                                                                 ))
 
+        # CONSTRAINT | Constrain group days to have the same hourly values for "q_bp"
+        visited_groups = {}
+        for d in range(days_per_week):
+            group = inputs['day_groups'].iloc[d]['day_group']
+            if not group in visited_groups:
+                visited_groups[group] = d
+                continue
+            else:
+                d_constrain_to = visited_groups[group]
+                source_start_hour = d_constrain_to * hours_per_day
+                target_start_hour = d * hours_per_day
+                # for h in range(hours_per_day):
+                for p in range(len(inputs['river_nodes'])):
+                    target_vars = variables['q_bp'][p][target_start_hour:target_start_hour + hours_per_day]
+                    source_vars = variables['q_bp'][p][source_start_hour:source_start_hour + hours_per_day]
+                    h = 1
+                    for target_var, source_var in zip(target_vars, source_vars):
+                        constraint_id_main.append('Constrain day group to same values')
+                        constraint_id_unit.append(f'{inputs["river_nodes"][p]}')
+                        constraint_id_time.append(f'D{d + 1:02}')
+                        constraints.append(model.add_linear_constraint(target_var == source_var,
+                                                                       name=f'Constrain day {d} to day {d_constrain_to} at hour {h} for river node {inputs["river_nodes"][p]}'))
+                        h += 1
+                        # Uncomment the next line for debugging purposes
+                    # logger.debug(f'Constrain day {d} to day {d_constrain_to} for river node {inputs["river_nodes"][p]}')
+        del visited_groups
+
+
+
         self.variables = variables
         self.constraints = constraints
         self.constraint_id_main = constraint_id_main
@@ -836,3 +866,4 @@ class Model():
             solver_type=mathopt.SolverType.HIGHS,
             params=params
         )
+    

@@ -1,3 +1,4 @@
+import enum
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
@@ -6,6 +7,8 @@ import pandas as pd
 import logging
 import sys
 import os
+
+from tempregpy.model.utils import process_dates_to_groups
 
 cfs_to_af = 1 / 12.1
 
@@ -252,6 +255,26 @@ def initialize_inputs_with_conversion(keys_with_conversion, config, par_name, co
             # error
             inputs[key] = pd.DataFrame()
 
+@enum.unique
+class DayType(enum.Enum):
+    WEEKDAY = "WEEKDAY"
+    SATURDAY = "SATURDAY"
+    SUNDAY = "SUNDAY"
+    HOLIDAY = "HOLIDAY"
+
+
+def map_date_to_day_type(date, holidays):
+    if date in holidays:
+        return DayType.HOLIDAY
+    elif date.weekday() < 5:  # Monday to Friday
+        return DayType.WEEKDAY
+    elif date.weekday() == 5:  # Saturday
+        return DayType.SATURDAY
+    else:  # Sunday
+        return DayType.SUNDAY
+
+
+
 
 def load_inputs_from_excel(config):
     try:
@@ -264,9 +287,23 @@ def load_inputs_from_excel(config):
         inputs['version'] = config.loc[config[par_name] == 'version', input_type].values[0]
         inputs['file_path'] = "DEPRECATED"
 
+        # Parse start timestamp and categorize days
+        inputs['start_timestamp'] = config.loc[config[par_name] == 'DateStart', input_type].values[0]
+        dates = pd.date_range(inputs['start_timestamp'], periods=7, freq='D')
+
+        inputs['day_groups'] = pd.DataFrame(
+            data={
+                "day_group": process_dates_to_groups(dates), "date": dates
+            },
+            # columns=["day_group", "date"],
+            index=[f"D{i:02}" for i in range(1, 8)],
+        )
+
         # Hourly values
         inputs['time_horizon'] = [f'H{i:02}' for i in range(1, 169)]
         inputs['daily_horizon'] = [f'H{i:02}' for i in range(1, 8)]
+
+        logger.warn("Holidays are not implemented in this version.")
 
         # Define list of plants
         plant_keys = ['plants', 'gauges', 'nodes', 'river_topology', 'plant_to_node', 'sinks', 'sources']

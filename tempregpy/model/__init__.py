@@ -4,7 +4,7 @@ from .product_linearization import (
     ProductLinearizationMethod,
     do_mathopt_product_linearization,
 )
-from .utils import parse_model_results
+from .results import parse_model_results
 
 __all__ = [
     'Model',

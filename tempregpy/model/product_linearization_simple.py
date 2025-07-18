@@ -124,7 +124,7 @@ def do_mathopt_simple_product_linearization(
     Y_var: mathopt.Variable,
     Z_var: mathopt.Variable
 ):
-    logger.info("Performing simple product linearization for variables: "
+    logger.debug("Performing simple product linearization for variables: "
                 f"{X_var.name}, {Y_var.name}, {Z_var.name}")
     # print(f"X_var: {X_var}, Y_var: {Y_var}, Z_var: {Z_var}")
     

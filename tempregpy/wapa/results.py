@@ -542,7 +542,7 @@ def export_results_to_excel(excel, inputs, results, file_path, include_plots=Tru
     if include_plots:
         worksheet = workbook.add_worksheet("Plots")
 
-        worksheet.insert_image(0, 0, inputs["sim_folder"] + "/plot.png.png")
-        worksheet.insert_image(30, 0, inputs["sim_folder"] + "/pload_serving.png.png")
+        worksheet.insert_image(0, 0, inputs["sim_folder"] + "/GCD_dispatch.png")
+        worksheet.insert_image(30, 0, inputs["sim_folder"] + "/GCD_load_serving.png")
 
     workbook.close()
