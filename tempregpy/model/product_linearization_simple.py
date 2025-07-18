@@ -1,10 +1,8 @@
-
 import numpy as np
 from scipy.spatial import ConvexHull
-import logging
+from ..logging_config import *
 from ortools.math_opt.python import mathopt
 
-logger = logging.getLogger(__name__)
 
 class HullComputation:
     def __init__(self, points, label):

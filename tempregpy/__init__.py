@@ -3,6 +3,7 @@ from .utils import *
 from ._version import *
 from .wapa import *
 from .model import *
+from .logging_config import *
 
 __appname__ = "TempRegPy"
 __version__ = "0.1.1"

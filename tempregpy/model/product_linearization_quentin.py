@@ -1,9 +1,8 @@
-import logging
+from ..logging_config import *
 from ortools.math_opt.python import mathopt
 import numpy as np
 from scipy.spatial import ConvexHull
 
-logger = logging.getLogger(__name__)
 
 def list_faces_from_N(N, method='triangles'):
     faces = []

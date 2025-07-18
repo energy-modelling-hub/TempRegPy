@@ -1,8 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import logging
+from ..logging_config import *
 
-logger = logging.getLogger(__name__)
 
 def plot_dispatch(df_dispatch, df_lmp, unit_name=''):
     fig, ax1 = plt.subplots(nrows=1, ncols=1, figsize=(12, 6), sharex=True)

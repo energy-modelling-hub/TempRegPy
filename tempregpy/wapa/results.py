@@ -3,7 +3,10 @@ from xlsxwriter.utility import xl_range
 import numpy as np
 import pandas as pd
 import os
+from ..logging_config import *
 
+PLOT_RELEASE = "/GCD_dispatch.png"
+PLOT_DISPATCH = "/GCD_load_serving.png"
 
 def draw_table(workbook, worksheet, name, columns, position):
     
@@ -296,9 +299,6 @@ def export_results_to_excel(excel, inputs, results, file_path, include_plots=Tru
     workbook = xlsxwriter.Workbook(file_path)
 
     START_TIMESTAMP = excel.loc[10,"Single input"]
-
-    
-
     RESULT_NODES = ["GCD", "RM61"]
     COLUMN_MAP = {}
 
@@ -539,10 +539,11 @@ def export_results_to_excel(excel, inputs, results, file_path, include_plots=Tru
 
     append_input_sheet(excel, workbook)
 
+
     if include_plots:
         worksheet = workbook.add_worksheet("Plots")
-
-        worksheet.insert_image(0, 0, inputs["sim_folder"] + "/GCD_dispatch.png")
-        worksheet.insert_image(30, 0, inputs["sim_folder"] + "/GCD_load_serving.png")
-
+        worksheet.insert_image(0, 0, inputs["sim_folder"] + PLOT_RELEASE)
+        worksheet.insert_image(30, 0, inputs["sim_folder"] + PLOT_DISPATCH)
+        logger.info(f"Plots {PLOT_RELEASE} and {PLOT_DISPATCH} included in the Results[Plots].xlsx worksheet")
     workbook.close()
+    logger.info("Results successfully exported to the Results.xlsx")

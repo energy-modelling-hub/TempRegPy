@@ -1,5 +1,4 @@
 import datetime
-import logging
 from tqdm import tqdm
 from ortools.math_opt.python import mathopt
 from .functions import *
@@ -33,7 +32,7 @@ class Model():
         """
         Populate the model with inputs
         """
-        logger = logging.getLogger(__name__)
+        # logger = logging.getLogger(__name__)
 
         #####################
         ###### CONVEX HULLS

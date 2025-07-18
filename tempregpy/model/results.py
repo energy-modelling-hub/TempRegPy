@@ -1,6 +1,6 @@
-
 import pandas as pd
 from tempregpy.model.constants import CFS_TO_AFH
+from ..logging_config import *
 
 
 def parse_model_results(inputs, result, variables):
@@ -86,5 +86,6 @@ def parse_model_results(inputs, result, variables):
         for p in range(len(inputs['nodes'])):
             results[var][inputs['nodes'][p]] = result.variable_values(variables[var][p])
         results[var] = pd.DataFrame(results[var], index=inputs['time_horizon'])
-    
+
+    logger.info("Results have been parsed successfully")
     return results

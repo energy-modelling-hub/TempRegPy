@@ -1,11 +1,9 @@
 from dataclasses import dataclass
 import enum
-import logging
-
+from ..logging_config import *
 from .product_linearization_simple import do_mathopt_simple_product_linearization
 from .product_linearization_quentin import do_mathopt_quentin_product_linearization
 
-logger = logging.getLogger(__name__)
 
 @enum.unique
 class ProductLinearizationMethod(enum.Enum):

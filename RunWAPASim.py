@@ -1,76 +1,17 @@
 import os
-import logging
 import sys
-import colorlog
 import datetime
-import pathlib
-from matplotlib import pyplot as plt
 import pandas as pd
 from ortools.math_opt.python import mathopt
-# from tempregpy.model import prepare_model, parse_model_results
 import tempregpy.wapa as wapa
 from tempregpy.model import *
-from tempregpy.wapa.plots import plot_dispatch, plot_load_serving
-import matplotlib
-# matplotlib.use('Agg')
+from tempregpy.wapa.plots import *
 
 
 TIMESTAMP = datetime.datetime.now()
 print(TIMESTAMP)
 # RESULTS_DIR = f"./results_{TIMESTAMP.strftime('%Y%m%d_%H%M%S')}/"
 RESULTS_DIR = f"./Results - {TIMESTAMP.strftime('%b %d, %Y %I.%M.%S %p')}/"
-
-def get_console_handler():
-    class SingleLetterFilter(logging.Filter):
-        LEVEL_LETTERS = {
-            'DEBUG': 'D',
-            'INFO': 'I', 
-            'WARNING': 'W',
-            'ERROR': 'E',
-            'CRITICAL': 'C'
-        }
-        
-        def filter(self, record):
-            record.levelname_short = self.LEVEL_LETTERS.get(record.levelname, 'U')
-            return True
-        
-    handler = colorlog.StreamHandler()
-    formatter = colorlog.ColoredFormatter(
-        '%(light_black)s[%(log_color)s%(levelname_short)s%(light_black)s]%(reset)s %(name)s: %(message_log_color)s%(message)s',
-        datefmt=None,
-        reset=True,
-        log_colors={
-            'DEBUG': 'cyan',
-            'INFO': 'light_green',
-            'WARNING': 'yellow',
-            'ERROR': 'red',
-            'CRITICAL': 'red,bg_white',
-        },
-        secondary_log_colors={
-            'message': {
-                'DEBUG': 'light_black',
-                'INFO': 'white',
-                'WARNING': 'yellow',
-                'ERROR': 'red',
-                'CRITICAL': 'red,bg_white',
-            }
-        },
-        style='%'
-    )
-    handler.setFormatter(formatter)
-    handler.addFilter(SingleLetterFilter())
-    return handler
-
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        get_console_handler(),
-    ],
-)
-
-logger = logging.getLogger(__name__)
-
 
 
 WAPA_INPUT_EXCEL_FILE = "./WAPA Inputs.xlsm"
@@ -132,7 +73,7 @@ for unit_name in inputs['plants']:
     fig.savefig(os.path.join(RESULTS_DIR, f"{unit_name}_dispatch.png"), format='png')
 
     if inputs['plt_show']:
-        logger.warn(f"Showing \"Dispatch\" plot for {unit_name}")
+        logger.warning(f"Showing \"Dispatch\" plot for {unit_name}")
         plt.show()
 
     df_dispatch = inputs['Demand_values'].copy().T
@@ -141,7 +82,7 @@ for unit_name in inputs['plants']:
     fig.savefig(os.path.join(RESULTS_DIR, f"{unit_name}_load_serving.png"), format='png')
 
     if inputs['plt_show']:
-        logger.warn(f"Showing \"Load Serving\" plot for {unit_name}")
+        logger.warning(f"Showing \"Load Serving\" plot for {unit_name}")
         plt.show()
 
 
