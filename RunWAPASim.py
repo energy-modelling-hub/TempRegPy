@@ -34,7 +34,7 @@ config = ModelConfig(
     solver_type=mathopt.SolverType.HIGHS,
     product_linearization=ProductLinearizationConfig(
         method=ProductLinearizationMethod.SUM_OF_CONVEX,
-        N=1,
+        N=inputs['edge_elements'],
     )
 )
 
@@ -43,7 +43,7 @@ logger.info("Preparing model with inputs...")
 model.populate_from_inputs(inputs)
 
 try:
-    solve_result = model.solve(time_limit=datetime.timedelta(seconds=5))
+    solve_result = model.solve(time_limit=inputs['sim_time'])
 except KeyboardInterrupt as e:
     logger.error("Model solving interrupted by user.")
     sys.exit(1)

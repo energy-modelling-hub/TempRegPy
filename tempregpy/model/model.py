@@ -344,15 +344,15 @@ class Model():
                             - variables['q_gg_ramp_down'][p][t] * parameters['C_gg_ramp_down'][plant, 'Single input']
                             )
             for d in range(len(inputs['daily_horizon'])):
-                obj_fnc += - (variables['slack_q_tot_daily_min'][p][d] + variables['slack_q_tot_daily_max'][p][d]) * 100000
+                obj_fnc += - (variables['slack_q_tot_daily_min'][p][d] + variables['slack_q_tot_daily_max'][p][d]) * inputs['C_slack']
 
             obj_fnc += - (variables['slack_q_bp_cyc_min'][p] + variables['slack_q_bp_cyc_max'][p] +
                         variables['slack_q_tur_cyc_min'][p] + variables['slack_q_tur_cyc_max'][p] +
                         variables['slack_q_tot_cyc_min'][p] + variables['slack_q_tot_cyc_max'][p] +
-                        variables['slack_q_gg_cyc_min'][p] + variables['slack_q_gg_cyc_max'][p]) * 100000
+                        variables['slack_q_gg_cyc_min'][p] + variables['slack_q_gg_cyc_max'][p]) * inputs['C_slack']
 
         for t in range(len(inputs['time_horizon'])):
-            obj_fnc += (- sum((variables['slack_p_node_min'][n][t] + variables['slack_p_node_max'][n][t]) * 100000 for n in range(len(inputs['nodes']))))
+            obj_fnc += (- sum((variables['slack_p_node_min'][n][t] + variables['slack_p_node_max'][n][t]) * inputs['C_slack'] for n in range(len(inputs['nodes']))))
 
         model.maximize(obj_fnc)
 
@@ -854,7 +854,8 @@ class Model():
         self.parameters = parameters
         self.mathopt_model = model
 
-    def solve(self, time_limit=datetime.timedelta(seconds=10)): 
+    def solve(self, time_limit=10):
+        time_limit = datetime.timedelta(seconds=time_limit)
         params = mathopt.SolveParameters(
             enable_output=True, 
             time_limit=time_limit
