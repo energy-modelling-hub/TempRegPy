@@ -298,7 +298,7 @@ def append_input_sheet(excel, workbook):
 def export_results_to_excel(excel, inputs, results, file_path, include_plots=True):
     workbook = xlsxwriter.Workbook(file_path)
 
-    START_TIMESTAMP = excel.loc[10,"Single input"]
+    START_TIMESTAMP = inputs["start_timestamp"]
     RESULT_NODES = ["GCD", "RM61"]
     COLUMN_MAP = {}
 
