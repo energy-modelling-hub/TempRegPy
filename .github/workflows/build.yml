@@ -77,6 +77,8 @@ jobs:
           /bin/bash -c "
             echo 'Starting Wine build process...'
 
+            cd /workspace
+
             # Run the Windows batch file using Wine
             wine docker/build.bat
             
