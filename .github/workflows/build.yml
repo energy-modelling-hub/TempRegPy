@@ -42,6 +42,13 @@ jobs:
           type=sha,prefix={{branch}}-
           type=raw,value=latest,enable={{is_default_branch}}
 
+    - name: Debug image names
+      run: |
+        echo "Registry: ${{ env.REGISTRY }}"
+        echo "Image name: ${{ env.IMAGE_NAME }}"
+        echo "Full image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+        echo "Generated tags: ${{ steps.meta.outputs.tags }}"
+
     - name: Check for Dockerfile changes
       id: dockerfile-check
       run: |
@@ -58,8 +65,8 @@ jobs:
         file: ./docker/Dockerfile
         push: true
         tags: anl/winbuild:latest
-        cache-from: type=registry,ref=anl/winbuild:buildcache
-        cache-to: type=registry,ref=anl/winbuild:buildcache,mode=max
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
     - name: Build repository using Docker container
       run: |
         docker run --rm \
