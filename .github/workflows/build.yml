@@ -84,3 +84,13 @@ jobs:
             
             echo 'Build completed successfully!'
           "
+    - name: Archive code coverage results
+      uses: actions/upload-artifact@v4
+      with:
+        name: RunWAPASim
+        path: ./dist/RunWAPASim.exe
+    - name: Release
+      uses: ncipollo/release-action@v1
+      if: startsWith(github.ref, 'refs/tags/')
+      with:
+        artifacts: ./dist/RunWAPASim.exe
