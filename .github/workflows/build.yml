@@ -63,6 +63,7 @@ jobs:
       with:
         context: ./docker
         file: ./docker/Dockerfile
+        load: true
         push: false
         tags: anl/winbuild:latest
         cache-from: type=gha
