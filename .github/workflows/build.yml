@@ -63,8 +63,8 @@ jobs:
       with:
         context: ./docker
         file: ./docker/Dockerfile
-        push: true
-        tags: ghcr.io/anl/winbuild:latest
+        push: false
+        tags: anl/winbuild:latest
         cache-from: type=gha
         cache-to: type=gha,mode=max
     - name: Build repository using Docker container
