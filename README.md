@@ -31,3 +31,12 @@ python -m tempregpy run -c path_to\TempRegPy.xlsm
 # Importing Results into Excel
 1. Select Simulation Name: Choose the simulation name from the dropdown menu.
 2. Read Results: Click the "Read Results" button at the top of the Excel sheet to import the results.
+
+# Developers guide (Compile .exe file)
+```commandline
+python -m venv ./env
+./env/scripts/activate
+pip install -r requirements2.txt
+pyinstaller runwapasim.spec
+```
+RunWAPASim.exe can be found in the /dist folder
