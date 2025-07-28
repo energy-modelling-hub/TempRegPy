@@ -170,10 +170,10 @@ def draw_single_table(workbook, worksheet, data, position):
 
     pass
 
-def append_input_sheet(excel, workbook):
+def append_input_sheet(excel, workbook, START_TIMESTAMP):
     worksheet = workbook.add_worksheet("Inputs")
 
-    START_TIMESTAMP = pd.to_datetime(excel.loc[10, "Single input"])
+    # START_TIMESTAMP = pd.to_datetime(excel.loc[10, "Single input"])
 
     KEY_VAR = "Python Variable Names"
 
@@ -537,7 +537,7 @@ def export_results_to_excel(excel, inputs, results, file_path, include_plots=Tru
         worksheet.set_column(1, 1, 4)
 
 
-    append_input_sheet(excel, workbook)
+    append_input_sheet(excel, workbook, START_TIMESTAMP)
 
 
     if include_plots:
