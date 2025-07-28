@@ -354,8 +354,6 @@ class Model():
         for t in range(len(inputs['time_horizon'])):
             obj_fnc += (- sum((variables['slack_p_node_min'][n][t] + variables['slack_p_node_max'][n][t]) * inputs['C_slack'] for n in range(len(inputs['nodes']))))
 
-        model.maximize(obj_fnc)
-
         ###################################
         ######## constants ###
         ###################################
@@ -819,6 +817,7 @@ class Model():
         if inputs['cnstr_pattern_repeat']!='Off':
             # CONSTRAINT | Constrain group days to have the same hourly values for "q_bp"
             visited_groups = {}
+            # variables['slack_day_hour_node'] = {}
             for d in range(days_per_week):
                 group = inputs['day_groups'].iloc[d]['day_group']
                 if not group in visited_groups:
@@ -842,16 +841,26 @@ class Model():
 
                         h = 1
                         for target_var, source_var in zip(target_vars, source_vars):
+                            # slack_var_name = f'slack_day_{d}_hour_{h}_node_{inputs["river_nodes"][p]}'
+                            # slack_var = model.add_variable(name=slack_var_name, lb=0)
+                            # variables['slack_day_hour_node'][(d, h, inputs["river_nodes"][p])] = slack_var
+
                             constraint_id_main.append('Constrain day group to same values')
                             constraint_id_unit.append(f'{inputs["river_nodes"][p]}')
                             constraint_id_time.append(f'D{d + 1:02}')
+                            # constraints.append(model.add_linear_constraint(target_var == source_var + slack_var,
+                            #                                                name=f'Constrain day {d} to day {d_constrain_to} at hour {h} for river node {inputs["river_nodes"][p]}'))
                             constraints.append(model.add_linear_constraint(target_var == source_var,
                                                                            name=f'Constrain day {d} to day {d_constrain_to} at hour {h} for river node {inputs["river_nodes"][p]}'))
+
+                            # obj_fnc += slack_var * 100000
                             h += 1
                             # Uncomment the next line for debugging purposes
                         # logger.debug(f'Constrain day {d} to day {d_constrain_to} for river node {inputs["river_nodes"][p]}')
             del visited_groups
 
+
+        model.maximize(obj_fnc)
 
 
         self.variables = variables
