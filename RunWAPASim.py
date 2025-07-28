@@ -33,6 +33,9 @@ config = ModelConfig(
     name="Bypass Optimization",
     solver_type=mathopt.SolverType.HIGHS,
     product_linearization=ProductLinearizationConfig(
+        # method=ProductLinearizationMethod.SINGLE,
+        # method=ProductLinearizationMethod.TRIANGLES,
+        # method=ProductLinearizationMethod.POLYGONS,
         method=ProductLinearizationMethod.SUM_OF_CONVEX,
         N=inputs['edge_elements'],
     )
@@ -43,7 +46,7 @@ logger.info("Preparing model with inputs...")
 model.populate_from_inputs(inputs)
 
 try:
-    solve_result = model.solve(time_limit=inputs['sim_time'])
+    solve_result = model.solve(time_limit=inputs['sim_time'],optimality_gap=inputs['opt_gap'])
 except KeyboardInterrupt as e:
     logger.error("Model solving interrupted by user.")
     sys.exit(1)

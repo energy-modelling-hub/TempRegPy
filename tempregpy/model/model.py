@@ -816,33 +816,41 @@ class Model():
                 constraints.append(model.add_linear_constraint(sum(variables['q_tur'][p][t]*parameters['T_tur'][plant,time] + variables['q_bp'][p][t]*parameters['T_bp'][plant,time] + variables['QT_latent'][p][t] for t in range(start_hour,end_hour)) <= parameters['T_gg_daily'][inputs['river_nodes'][p],f'D{d + 1:02}'] * sum(variables['q_sink'][p][t] for t in range(start_hour,end_hour)) + sum((parameters['T_gg_daily'][inputs['river_nodes'][j], f'D{d + 1:02}'] - parameters['dT_daily'][inputs['river_nodes'][p],inputs['river_nodes'][j]][d])*sum(variables['q_flow'][p][j][t] for t in range(start_hour,end_hour)) for j in range(len(inputs['river_nodes']))),
                                                                 name = f'Maximum daily average temperature (OutFlow) for {inputs['river_nodes'][p]} at {f'D{d + 1:02}'}'
                                                                 ))
+        if inputs['cnstr_pattern_repeat']!='Off':
+            # CONSTRAINT | Constrain group days to have the same hourly values for "q_bp"
+            visited_groups = {}
+            for d in range(days_per_week):
+                group = inputs['day_groups'].iloc[d]['day_group']
+                if not group in visited_groups:
+                    visited_groups[group] = d
+                    continue
+                else:
+                    d_constrain_to = visited_groups[group]
+                    source_start_hour = d_constrain_to * hours_per_day
+                    target_start_hour = d * hours_per_day
+                    # for h in range(hours_per_day):
+                    for p in range(len(inputs['river_nodes'])):
+                        if inputs['cnstr_pattern_repeat'] == 'Bypass Release':
+                            target_vars = variables['q_bp'][p][target_start_hour:target_start_hour + hours_per_day]
+                            source_vars = variables['q_bp'][p][source_start_hour:source_start_hour + hours_per_day]
+                        if inputs['cnstr_pattern_repeat'] == 'Turbine Release':
+                            target_vars = variables['q_tur'][p][target_start_hour:target_start_hour + hours_per_day]
+                            source_vars = variables['q_tur'][p][source_start_hour:source_start_hour + hours_per_day]
+                        if inputs['cnstr_pattern_repeat'] == 'Total Release':
+                            target_vars = variables['q_tot'][p][target_start_hour:target_start_hour + hours_per_day]
+                            source_vars = variables['q_tot'][p][source_start_hour:source_start_hour + hours_per_day]
 
-        # CONSTRAINT | Constrain group days to have the same hourly values for "q_bp"
-        visited_groups = {}
-        for d in range(days_per_week):
-            group = inputs['day_groups'].iloc[d]['day_group']
-            if not group in visited_groups:
-                visited_groups[group] = d
-                continue
-            else:
-                d_constrain_to = visited_groups[group]
-                source_start_hour = d_constrain_to * hours_per_day
-                target_start_hour = d * hours_per_day
-                # for h in range(hours_per_day):
-                for p in range(len(inputs['river_nodes'])):
-                    target_vars = variables['q_bp'][p][target_start_hour:target_start_hour + hours_per_day]
-                    source_vars = variables['q_bp'][p][source_start_hour:source_start_hour + hours_per_day]
-                    h = 1
-                    for target_var, source_var in zip(target_vars, source_vars):
-                        constraint_id_main.append('Constrain day group to same values')
-                        constraint_id_unit.append(f'{inputs["river_nodes"][p]}')
-                        constraint_id_time.append(f'D{d + 1:02}')
-                        constraints.append(model.add_linear_constraint(target_var == source_var,
-                                                                       name=f'Constrain day {d} to day {d_constrain_to} at hour {h} for river node {inputs["river_nodes"][p]}'))
-                        h += 1
-                        # Uncomment the next line for debugging purposes
-                    # logger.debug(f'Constrain day {d} to day {d_constrain_to} for river node {inputs["river_nodes"][p]}')
-        del visited_groups
+                        h = 1
+                        for target_var, source_var in zip(target_vars, source_vars):
+                            constraint_id_main.append('Constrain day group to same values')
+                            constraint_id_unit.append(f'{inputs["river_nodes"][p]}')
+                            constraint_id_time.append(f'D{d + 1:02}')
+                            constraints.append(model.add_linear_constraint(target_var == source_var,
+                                                                           name=f'Constrain day {d} to day {d_constrain_to} at hour {h} for river node {inputs["river_nodes"][p]}'))
+                            h += 1
+                            # Uncomment the next line for debugging purposes
+                        # logger.debug(f'Constrain day {d} to day {d_constrain_to} for river node {inputs["river_nodes"][p]}')
+            del visited_groups
 
 
 
@@ -854,11 +862,12 @@ class Model():
         self.parameters = parameters
         self.mathopt_model = model
 
-    def solve(self, time_limit=10):
+    def solve(self, time_limit=10, optimality_gap=0.01):
         time_limit = datetime.timedelta(seconds=time_limit)
         params = mathopt.SolveParameters(
             enable_output=True, 
-            time_limit=time_limit
+            time_limit=time_limit,
+            relative_gap_tolerance=optimality_gap,
         )
 
         return mathopt.solve(
