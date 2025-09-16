@@ -7,6 +7,7 @@ from scipy.spatial import ConvexHull
 import pandas as pd
 from ..logging_config import *
 from ..model.constants import *
+from ..model.rough_zones import *
 from tempregpy.model.utils import process_dates_to_groups
 
 
@@ -270,8 +271,6 @@ def map_date_to_day_type(date, holidays):
         return DayType.SUNDAY
 
 
-
-
 def load_inputs_from_excel(config):
     try:
         logger.info('Inputs have been succesfully parsed')
@@ -298,6 +297,7 @@ def load_inputs_from_excel(config):
         # Hourly values
         inputs['time_horizon'] = [f'H{i:02}' for i in range(1, 169)]
         inputs['daily_horizon'] = [f'H{i:02}' for i in range(1, 8)]
+        inputs['rough_zones'] = [f'H{i:02}' for i in range(1, 8)]
 
         logger.warning("Holidays are not implemented in this version.")
 
@@ -429,6 +429,15 @@ def load_inputs_from_excel(config):
         initialize_inputs_with_index(plant_to_gauge__hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs,
                                         'river_topology', 0)
 
+        plant_rough_zone_keys = {
+            'Q_rough_zone_min':CFS_TO_AFH,
+            'Q_rough_zone_max':CFS_TO_AFH
+        }
+        initialize_inputs_with_conversion(plant_rough_zone_keys, config, par_name, ['Name']+inputs['rough_zones'], inputs, 'plants', np.nan)
+
+        inputs['Q_rough_zone_min'], inputs['Q_rough_zone_max'], inputs['rough_zones'] = create_rough_zones(
+            inputs['Q_rough_zone_min'], inputs['Q_rough_zone_max']
+        )
         ##########################################
         # Process plant to node related input data
         ##########################################

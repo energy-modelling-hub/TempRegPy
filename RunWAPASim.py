@@ -93,4 +93,3 @@ logger.info("Model solved successfully. Exporting results to Excel...")
 wapa.export_results_to_excel(excel_data, inputs, results, os.path.join(RESULTS_DIR, "WAPA_Results.xlsx"))
 
 logger.info(f"Results saved in {os.path.abspath(RESULTS_DIR)}")
-
