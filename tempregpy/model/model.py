@@ -324,11 +324,12 @@ class Model():
             variables['q_bp_committed'] = [[model.add_integer_variable(lb=parameters['bp_forced_commit'][p,t], ub=1,
                                                                     name=f'q_bp_committed_{p}_{t}') for t in inputs['time_horizon']] for p in inputs['river_nodes']
                                         ]
-            variables['q_tur_committed'] = [[[model.add_integer_variable(lb=0, ub=1,
-                                             name=f'q_tur_committed_{p}_{r}_{t}') for t in inputs['time_horizon']]
-                                             for r in inputs['rough_zones']]
-                                             for p in inputs['river_nodes']
-                                            ]
+            if inputs['cnstr_rough_zone']:
+                variables['q_tur_committed'] = [[[model.add_integer_variable(lb=0, ub=1,
+                                                 name=f'q_tur_committed_{p}_{r}_{t}') for t in inputs['time_horizon']]
+                                                 for r in inputs['rough_zones']]
+                                                 for p in inputs['river_nodes']
+                                                ]
 
         logger.info(f"Optimization variables sucesfully created. {list(variables)}")
 
@@ -376,32 +377,33 @@ class Model():
         ###################################
         ######## ROUGH ZONES
         ###################################
-        for p in range(len(inputs['plants'])):
-            for t in range(len(inputs['time_horizon'])):
-                plant = inputs['plants'][p]
-                constraint_id_main.append('Rough zone min constraint')
-                constraint_id_unit.append(f'{inputs['plants'][p]}')
-                constraint_id_time.append(f'{inputs['time_horizon'][t]}')
-                constraints.append(model.add_linear_constraint(
-                    sum(variables['q_tur_committed'][p][r][t] * parameters['Q_rough_zone_min'][plant, inputs['rough_zones'][r]] for r in range(len(inputs['rough_zones']))) <= variables['q_tur'][p][t]))
+        if inputs['cnstr_rough_zone']:
+            for p in range(len(inputs['plants'])):
+                for t in range(len(inputs['time_horizon'])):
+                    plant = inputs['plants'][p]
+                    constraint_id_main.append('Rough zone min constraint')
+                    constraint_id_unit.append(f'{inputs['plants'][p]}')
+                    constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+                    constraints.append(model.add_linear_constraint(
+                        sum(variables['q_tur_committed'][p][r][t] * parameters['Q_rough_zone_min'][plant, inputs['rough_zones'][r]] for r in range(len(inputs['rough_zones']))) <= variables['q_tur'][p][t]))
 
-        for p in range(len(inputs['plants'])):
-            for t in range(len(inputs['time_horizon'])):
-                plant = inputs['plants'][p]
-                constraint_id_main.append('Rough zone max constraint')
-                constraint_id_unit.append(f'{inputs['plants'][p]}')
-                constraint_id_time.append(f'{inputs['time_horizon'][t]}')
-                constraints.append(model.add_linear_constraint(
-                    sum(variables['q_tur_committed'][p][r][t] * parameters['Q_rough_zone_max'][plant, inputs['rough_zones'][r]] for r in range(len(inputs['rough_zones']))) >= variables['q_tur'][p][t]))
+            for p in range(len(inputs['plants'])):
+                for t in range(len(inputs['time_horizon'])):
+                    plant = inputs['plants'][p]
+                    constraint_id_main.append('Rough zone max constraint')
+                    constraint_id_unit.append(f'{inputs['plants'][p]}')
+                    constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+                    constraints.append(model.add_linear_constraint(
+                        sum(variables['q_tur_committed'][p][r][t] * parameters['Q_rough_zone_max'][plant, inputs['rough_zones'][r]] for r in range(len(inputs['rough_zones']))) >= variables['q_tur'][p][t]))
 
 
-        for p in range(len(inputs['plants'])):
-            for t in range(len(inputs['time_horizon'])):
-                constraint_id_main.append('Sum of binary <=1')
-                constraint_id_unit.append(f'{inputs['plants'][p]}')
-                constraint_id_time.append(f'{inputs['time_horizon'][t]}')
-                constraints.append(model.add_linear_constraint(sum(variables['q_tur_committed'][p][r][t]
-                                                                   for r in range(len(inputs['rough_zones']))) <= 1))
+            for p in range(len(inputs['plants'])):
+                for t in range(len(inputs['time_horizon'])):
+                    constraint_id_main.append('Sum of binary <=1')
+                    constraint_id_unit.append(f'{inputs['plants'][p]}')
+                    constraint_id_time.append(f'{inputs['time_horizon'][t]}')
+                    constraints.append(model.add_linear_constraint(sum(variables['q_tur_committed'][p][r][t]
+                                                                       for r in range(len(inputs['rough_zones']))) <= 1))
         ###################################
         ######## TOTAL RELEASE
         ###################################
