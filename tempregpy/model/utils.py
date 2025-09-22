@@ -34,11 +34,29 @@ def process_dates_to_groups(dates):
             date_groups.append(sunday_counter)
             global_counter += 1
 
+        # elif _date.weekday() < 5:  # Monday to Friday
+        #     if _date in [pd.Timestamp('2023-01-01'), pd.Timestamp('2023-01-02')]:  # Specific dates
+        #         date_groups.append(sunday_counter)
+        #     else:
+        #         date_groups.append(global_counter)
+
         elif _date.weekday() < 5:  # Monday to Friday
-            if _date in [pd.Timestamp('2023-01-01'), pd.Timestamp('2023-01-02')]:  # Specific dates
+            # 1) If we crossed a month or year boundary since yesterday → new group
+            if (_date.month != yesterday.month) or (_date.year != yesterday.year):
+                global_counter += 1
+                date_groups.append(global_counter)
+
+            # 2) Your existing “special‐dates” hack lives next
+            elif _date in (pd.Timestamp('2023-01-01'),
+                           pd.Timestamp('2023-01-02')):
                 date_groups.append(sunday_counter)
+
+            # 3) Otherwise stay in the current group
             else:
                 date_groups.append(global_counter)
+
+            yesterday = _date
+
 
         elif _date.weekday() == 5:  # Saturday
             global_counter += 1
