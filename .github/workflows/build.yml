@@ -2,7 +2,9 @@ name: Build with Docker Container
 
 on:
   push:
-    branches: [ main, develop, 3-ci ]
+    push:
+      branches: [ main ]
+      tags: ['*']
   pull_request:
     branches: [ main ]
 
