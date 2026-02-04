@@ -415,10 +415,10 @@ class Model():
                 constraint_id_time.append(f'{inputs['time_horizon'][t]}')
                 constraints.append(model.add_linear_constraint(variables['q_bp'][p][t] + variables['q_tur'][p][t] == variables['q_tot'][p][t]))
 
-        for p in range(len(inputs['river_nodes'])):
+        for p in range(len(inputs['plants'])):
             for d in range(days_per_week):
                 constraint_id_main.append('Total daily release')
-                constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
+                constraint_id_unit.append(f'{inputs['plants'][p]}')
                 constraint_id_time.append(f'D{d + 1:02}')
 
                 start_hour = d * hours_per_day
@@ -428,7 +428,7 @@ class Model():
                     model.add_linear_constraint(
                         sum(variables['q_tot'][p][t] for t in range(start_hour, end_hour))
                         # + variables['slack_q_tot_daily_min'][p][d] 
-                        == parameters['Q_tot_daily'][(inputs['river_nodes'][p], f'D{d + 1:02}')] 
+                        == parameters['Q_tot_daily'][(inputs['plants'][p], f'D{d + 1:02}')]
                         # + variables['slack_q_tot_daily_max'][p][d]
                     )
                 )
@@ -790,29 +790,53 @@ class Model():
         #     Z_var=variables["QT_latent"],
         # )
 
-        # Add constraint for maximum hourly temperature limit on the outflow side
         for p in range(len(inputs['river_nodes'])):
             plant = inputs['river_nodes'][p]
             for t in range(len(inputs['time_horizon'])):
                 time = inputs['time_horizon'][t]
+
+                # Only apply temperature constraints if this node has T_bp and T_tur defined
+                # (i.e., it's a plant, not just a gauge location)
+                if (plant, time) not in parameters['T_bp'] or (plant, time) not in parameters['T_tur']:
+                    continue
+
                 constraint_id_main.append('Maximum hourly temperature (OutFlow)')
                 constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
                 constraint_id_time.append(f'{inputs['time_horizon'][t]}')
-                constraints.append(model.add_linear_constraint(variables['q_tur'][p][t]*parameters['T_tur'][plant,time] + variables['q_bp'][p][t]*parameters['T_bp'][plant,time] + variables['QT_latent'][p][t] <= variables['q_sink'][p][t]*parameters['T_sink_hourly_max'][inputs['river_nodes'][p],time] + sum((parameters['T_gg_hourly_max'][inputs['river_nodes'][j],time]-parameters['dT_hourly'][inputs['river_nodes'][p],inputs['river_nodes'][j],time])*variables['q_flow'][p][j][t] for j in range(len(inputs['river_nodes']))),
-                                                                name = f'Maximum hourly temperature (OutFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
-                                                                ))
+                constraints.append(model.add_linear_constraint(
+                    variables['q_tur'][p][t] * parameters['T_tur'][plant, time] +
+                    variables['q_bp'][p][t] * parameters['T_bp'][plant, time] +
+                    variables['QT_latent'][p][t] <=
+                    variables['q_sink'][p][t] * parameters['T_sink_hourly_max'][inputs['river_nodes'][p], time] +
+                    sum((parameters['T_gg_hourly_max'][inputs['river_nodes'][j], time] - parameters['dT_hourly'][
+                        inputs['river_nodes'][p], inputs['river_nodes'][j], time]) * variables['q_flow'][p][j][t] for j
+                        in range(len(inputs['river_nodes']))),
+                    name=f'Maximum hourly temperature (OutFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
+                ))
 
         # Add constraint for minimum hourly temperature limit on the outflow side
         for p in range(len(inputs['river_nodes'])):
             plant = inputs['river_nodes'][p]
             for t in range(len(inputs['time_horizon'])):
                 time = inputs['time_horizon'][t]
+
+                # Only apply temperature constraints if this node has T_bp and T_tur defined
+                if (plant, time) not in parameters['T_bp'] or (plant, time) not in parameters['T_tur']:
+                    continue
+
                 constraint_id_main.append('Minimum hourly temperature (OutFlow)')
                 constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
                 constraint_id_time.append(f'{inputs['time_horizon'][t]}')
-                constraints.append(model.add_linear_constraint(variables['q_tur'][p][t]*parameters['T_tur'][plant,time] + variables['q_bp'][p][t]*parameters['T_bp'][plant,time] + variables['QT_latent'][p][t] >= variables['q_sink'][p][t]*parameters['T_sink_hourly_min'][inputs['river_nodes'][p],time] + sum((parameters['T_gg_hourly_min'][inputs['river_nodes'][j],time]-parameters['dT_hourly'][inputs['river_nodes'][p],inputs['river_nodes'][j],time])*variables['q_flow'][p][j][t] for j in range(len(inputs['river_nodes']))),
-                                                                name = f'Minimum hourly temperature (OutFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
-                                                                ))
+                constraints.append(model.add_linear_constraint(
+                    variables['q_tur'][p][t] * parameters['T_tur'][plant, time] +
+                    variables['q_bp'][p][t] * parameters['T_bp'][plant, time] +
+                    variables['QT_latent'][p][t] >=
+                    variables['q_sink'][p][t] * parameters['T_sink_hourly_min'][inputs['river_nodes'][p], time] +
+                    sum((parameters['T_gg_hourly_min'][inputs['river_nodes'][j], time] - parameters['dT_hourly'][
+                        inputs['river_nodes'][p], inputs['river_nodes'][j], time]) * variables['q_flow'][p][j][t] for j
+                        in range(len(inputs['river_nodes']))),
+                    name=f'Minimum hourly temperature (OutFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
+                ))
 
         # Add constraint for maximum hourly temperature limit on the inflow side
         for p in range(len(inputs['river_nodes'])):
@@ -852,6 +876,7 @@ class Model():
                 constraints.append(model.add_linear_constraint(sum(variables['q_tur'][p][t]*parameters['T_tur'][plant,time] + variables['q_bp'][p][t]*parameters['T_bp'][plant,time] + variables['QT_latent'][p][t] for t in range(start_hour,end_hour)) <= parameters['T_gg_daily'][inputs['river_nodes'][p],f'D{d + 1:02}'] * sum(variables['q_sink'][p][t] for t in range(start_hour,end_hour)) + sum((parameters['T_gg_daily'][inputs['river_nodes'][j], f'D{d + 1:02}'] - parameters['dT_daily'][inputs['river_nodes'][p],inputs['river_nodes'][j]][d])*sum(variables['q_flow'][p][j][t] for t in range(start_hour,end_hour)) for j in range(len(inputs['river_nodes']))),
                                                                 name = f'Maximum daily average temperature (OutFlow) for {inputs['river_nodes'][p]} at {f'D{d + 1:02}'}'
                                                                 ))
+                
         if inputs['cnstr_pattern_repeat']!='Off':
             # CONSTRAINT | Constrain group days to have the same hourly values for "q_bp"
             visited_groups = {}
