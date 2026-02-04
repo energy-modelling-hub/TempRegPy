@@ -148,8 +148,23 @@ def initialize_inputs_with_conversion(keys_with_conversion, config, par_name, co
         if key in config[par_name].values:
             inputs[key] = config.loc[config[par_name] == key, columns].set_index('Name').reindex(inputs[index_key]).infer_objects(copy=False).fillna(default_value) * factor
         else:
-            log_error(key)
-            inputs[key] = pd.DataFrame()
+            logger.warning(f'Key "{key}" not found in config. Creating empty DataFrame with default value {default_value}')
+            # Create a DataFrame with the appropriate index and columns filled with default_value
+            if isinstance(columns, list) and len(columns) > 1:
+                # Multiple columns case (e.g., ['Name', 'H01', 'H02', ...])
+                col_names = [c for c in columns if c != 'Name']
+                inputs[key] = pd.DataFrame(
+                    default_value * factor,
+                    index=inputs[index_key],
+                    columns=col_names
+                )
+            else:
+                # Single column case
+                inputs[key] = pd.DataFrame(
+                    default_value * factor,
+                    index=inputs[index_key],
+                    columns=['Single input']
+                )
 
 def log_error(key):
     logger.error(f'There is no such key {key}')
@@ -258,7 +273,49 @@ def load_config(file_path):
             }
             initialize_inputs_with_conversion(river_connection_hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs, 'river_topology')
 
+            plant_rough_zone_keys = {
+                'Q_rough_zone_min': CFS_TO_AFH,
+                'Q_rough_zone_max': CFS_TO_AFH
+            }
 
+            # Check if rough zones are defined in the config
+            if 'Q_rough_zone_min' in config[par_name].values or 'Q_rough_zone_max' in config[par_name].values:
+                # Use H01-H07 column headers (same as hourly time horizon)
+                inputs['rough_zones'] = [f'H{i:02}' for i in range(1, 8)]
+
+                initialize_inputs_with_conversion(
+                    plant_rough_zone_keys,
+                    config,
+                    par_name,
+                    ['Name'] + inputs['rough_zones'],  # ['Name', 'H01', 'H02', ...]
+                    inputs,
+                    'plants',
+                    np.nan
+                )
+
+                # Import the rough zone creation function
+                from tempregpy.model.rough_zones import create_rough_zones
+
+                # Create the actual zones from the min/max values
+                try:
+                    inputs['Q_rough_zone_min'], inputs['Q_rough_zone_max'], inputs['rough_zones'] = create_rough_zones(
+                        inputs['Q_rough_zone_min'],
+                        inputs['Q_rough_zone_max']
+                    )
+                    logger.info(f"Created {len(inputs['rough_zones'])} rough zones: {inputs['rough_zones']}")
+                except Exception as e:
+                    logger.warning(f"Could not create rough zones: {e}. Using default empty zones.")
+                    inputs['rough_zones'] = []
+                    inputs['Q_rough_zone_min'] = pd.DataFrame()
+                    inputs['Q_rough_zone_max'] = pd.DataFrame()
+            else:
+                logger.info("No rough zone inputs found in Excel file. Rough zone constraints will be disabled.")
+                inputs['rough_zones'] = []
+                inputs['Q_rough_zone_min'] = pd.DataFrame(index=inputs.get('plants', []))
+                inputs['Q_rough_zone_max'] = pd.DataFrame(index=inputs.get('plants', []))
+                # Ensure rough zone constraint is disabled
+                if 'cnstr_rough_zone' not in inputs:
+                    inputs['cnstr_rough_zone'] = False
             ##################################
             # Process gauge related input data
             ##################################
