@@ -209,7 +209,7 @@ def load_config(file_path):
             constraint_keys = [
                 'sim_folder', 'plt_show', 'cnstr_bp_ramp', 'cnstr_tur_ramp', 'cnstr_tot_ramp', 'cnstr_gg_ramp',
                 'cnstr_temp_t01t24', 'cnstr_bp_t01t24', 'cnstr_tur_t01t24', 'cnstr_tot_t01t24', 'cnstr_gg_t01t24',
-                'cnstr_oper_range', 'sim_type', 'sim_time', 'cnstr_rough_zone'
+                'cnstr_oper_range', 'sim_type', 'sim_time', 'cnstr_rough_zone', 'cnstr_pattern_repeat',
             ]
             # Loop through each key and extract the corresponding value
             for key in constraint_keys:

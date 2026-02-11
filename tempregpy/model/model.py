@@ -870,13 +870,30 @@ class Model():
                 start_hour = d * hours_per_day
                 end_hour = start_hour + hours_per_day
                 plant = inputs['river_nodes'][p]
+
                 constraint_id_main.append('Maximum daily average temperature (OutFlow)')
                 constraint_id_unit.append(f'{inputs['river_nodes'][p]}')
                 constraint_id_time.append('')
-                constraints.append(model.add_linear_constraint(sum(variables['q_tur'][p][t]*parameters['T_tur'][plant,time] + variables['q_bp'][p][t]*parameters['T_bp'][plant,time] + variables['QT_latent'][p][t] for t in range(start_hour,end_hour)) <= parameters['T_gg_daily'][inputs['river_nodes'][p],f'D{d + 1:02}'] * sum(variables['q_sink'][p][t] for t in range(start_hour,end_hour)) + sum((parameters['T_gg_daily'][inputs['river_nodes'][j], f'D{d + 1:02}'] - parameters['dT_daily'][inputs['river_nodes'][p],inputs['river_nodes'][j]][d])*sum(variables['q_flow'][p][j][t] for t in range(start_hour,end_hour)) for j in range(len(inputs['river_nodes']))),
-                                                                name = f'Maximum daily average temperature (OutFlow) for {inputs['river_nodes'][p]} at {f'D{d + 1:02}'}'
-                                                                ))
-                
+
+                # FIXED: Use hourly time index inside the sum
+                constraints.append(model.add_linear_constraint(
+                    sum(
+                        variables['q_tur'][p][t] * parameters['T_tur'][plant, inputs['time_horizon'][t]] +
+                        variables['q_bp'][p][t] * parameters['T_bp'][plant, inputs['time_horizon'][t]] +
+                        variables['QT_latent'][p][t]
+                        for t in range(start_hour, end_hour)
+                    ) <=
+                    parameters['T_gg_daily'][inputs['river_nodes'][p], f'D{d + 1:02}'] *
+                    sum(variables['q_sink'][p][t] for t in range(start_hour, end_hour)) +
+                    sum(
+                        (parameters['T_gg_daily'][inputs['river_nodes'][j], f'D{d + 1:02}'] -
+                         parameters['dT_daily'][inputs['river_nodes'][p], inputs['river_nodes'][j]][d]) *
+                        sum(variables['q_flow'][p][j][t] for t in range(start_hour, end_hour))
+                        for j in range(len(inputs['river_nodes']))
+                    ),
+                    name=f'Maximum daily average temperature (OutFlow) for {inputs['river_nodes'][p]} at {f'D{d + 1:02}'}'
+                ))
+
         if inputs['cnstr_pattern_repeat']!='Off':
             # CONSTRAINT | Constrain group days to have the same hourly values for "q_bp"
             visited_groups = {}
