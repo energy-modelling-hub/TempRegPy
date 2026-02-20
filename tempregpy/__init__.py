@@ -1,28 +1,13 @@
-from .utils import *
-# from .build_pywraplp import *
-from ._version import *
-from .wapa import *
-from .model import *
-from .logging_config import *
+"""TempRegPy -- Temperature-constrained hydropower dispatch optimization."""
+
+from tempregpy.model import (
+    Model,
+    ModelConfig,
+    ProductLinearizationConfig,
+    ProductLinearizationMethod,
+    parse_model_results,
+)
+from tempregpy.model.functions import load_config
+from tempregpy._version import __version__, version
 
 __appname__ = "TempRegPy"
-__version__ = "0.1.1"
-__author__ = "Matija Pavičević"
-
-(
-    SUCCESS,
-    DIR_ERROR,
-    FILE_ERROR,
-    DB_READ_ERROR,
-    DB_WRITE_ERROR,
-    JSON_ERROR,
-    ID_ERROR,
-) = range(7)
-
-ERRORS = {
-    DIR_ERROR: "config directory error",
-    FILE_ERROR: "config file error",
-    DB_READ_ERROR: "database read error",
-    DB_WRITE_ERROR: "database write error",
-    ID_ERROR: "id error",
-}
