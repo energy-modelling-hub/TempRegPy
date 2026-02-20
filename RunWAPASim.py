@@ -1,3 +1,11 @@
+"""
+DEPRECATED: This script is kept for operator fallback only.
+Prefer: python -m tempregpy run -c path_to/config.xlsm
+
+This script requires the tempregpy.wapa subpackage which is not
+included in the published PyPI distribution. It only works from
+a git clone of the repository.
+"""
 import os
 import sys
 import datetime
