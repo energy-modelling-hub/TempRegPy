@@ -136,12 +136,14 @@ def initialize_inputs(keys, config, par_name, column, inputs, default_value):
         else:
             inputs[key] = default_value
 
+
 def initialize_inputs_with_index(keys, config, par_name, columns, inputs, index_key, default_value):
     for key in keys:
         if key in config[par_name].values:
             inputs[key] = config.loc[config[par_name] == key, columns].set_index('Name').reindex(inputs[index_key]).infer_objects(copy=False).fillna(default_value)
         else:
-            log_error(key)
+            logger.warning(f'Key "{key}" not found in config. Skipping.')
+
 
 def initialize_inputs_with_conversion(keys_with_conversion, config, par_name, columns, inputs, index_key, default_value=0):
     for key, factor in keys_with_conversion.items():
@@ -153,22 +155,11 @@ def initialize_inputs_with_conversion(keys_with_conversion, config, par_name, co
             if isinstance(columns, list) and len(columns) > 1:
                 # Multiple columns case (e.g., ['Name', 'H01', 'H02', ...])
                 col_names = [c for c in columns if c != 'Name']
-                inputs[key] = pd.DataFrame(
-                    default_value * factor,
-                    index=inputs[index_key],
-                    columns=col_names
-                )
+                inputs[key] = pd.DataFrame(default_value * factor, index=inputs[index_key], columns=col_names)
             else:
                 # Single column case
-                inputs[key] = pd.DataFrame(
-                    default_value * factor,
-                    index=inputs[index_key],
-                    columns=['Single input']
-                )
+                inputs[key] = pd.DataFrame(default_value * factor, index=inputs[index_key], columns=['Single input'])
 
-def log_error(key):
-    logger.error(f'There is no such key {key}')
-    pass
 
 
 def load_config(file_path):
