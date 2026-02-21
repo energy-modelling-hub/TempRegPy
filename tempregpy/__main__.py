@@ -87,6 +87,34 @@ def run(
         logger.error(f"Failed to parse results: {e}")
         raise typer.Exit(code=1)
 
+    # Save results to CSV files
+    results_dir = inputs.get('sim_folder', './Results/')
+    if not isinstance(results_dir, str):
+        results_dir = './Results/'
+    os.makedirs(results_dir, exist_ok=True)
+
+    csv_exports = {
+        'q_bp': 'bypass_release_cfs.csv',
+        'q_tur': 'turbine_release_cfs.csv',
+        'q_tot': 'total_release_cfs.csv',
+        'p_tur': 'power_output_mw.csv',
+        'T_gg': 'gauge_temperature_c.csv',
+        'T_plant': 'plant_temperature_c.csv',
+        'q_gg': 'gauge_flow_cfs.csv',
+    }
+
+    for key, filename in csv_exports.items():
+        if key in results and hasattr(results[key], 'to_csv'):
+            filepath = os.path.join(results_dir, filename)
+            results[key].to_csv(filepath)
+            logger.info(f"Saved {filepath}")
+
+    obj_path = os.path.join(results_dir, 'objective_value.txt')
+    with open(obj_path, 'w') as f:
+        f.write(f"Objective value: {results.get('Obj func', 'N/A')}\n")
+    logger.info(f"Saved {obj_path}")
+
+    logger.info(f"Results saved to {os.path.abspath(results_dir)}")
     logger.info("Optimization complete.")
     logger.info(f"Finished at {datetime.datetime.now()}")
 
