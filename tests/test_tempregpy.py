@@ -13,6 +13,8 @@ def test_import():
     assert hasattr(tempregpy, "ModelConfig")
     assert hasattr(tempregpy, "load_config")
     assert hasattr(tempregpy, "__appname__")
+    assert hasattr(tempregpy, "ParseModelResults")
+    assert not hasattr(tempregpy, "parse_model_results")
 
 
 def test_version_string():
