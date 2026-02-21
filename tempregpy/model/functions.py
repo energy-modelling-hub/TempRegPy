@@ -279,6 +279,7 @@ def load_config(file_path):
                 'sim_folder', 'plt_show', 'cnstr_bp_ramp', 'cnstr_tur_ramp', 'cnstr_tot_ramp', 'cnstr_gg_ramp',
                 'cnstr_temp_t01t24', 'cnstr_bp_t01t24', 'cnstr_tur_t01t24', 'cnstr_tot_t01t24', 'cnstr_gg_t01t24',
                 'cnstr_oper_range', 'sim_type', 'sim_time', 'cnstr_rough_zone', 'cnstr_pattern_repeat',
+                'opt_gap', 'edge_elements', 'C_slack',
             ]
             # Loop through each key and extract the corresponding value
             for key in constraint_keys:
@@ -456,7 +457,7 @@ def load_config(file_path):
                 'C_tot_ramp_down': 1/CFS_TO_AFH,
                 'C_gg_ramp_up': 1 / CFS_TO_AFH,
                 'C_gg_ramp_down': 1 / CFS_TO_AFH,
-                'C_slack': 1 / CFS_TO_AFH,
+                # 'C_slack': 1 / CFS_TO_AFH,
             }
             initialize_inputs_with_conversion(cost_keys, config, par_name, ['Name', input_type], inputs, 'river_nodes')
 

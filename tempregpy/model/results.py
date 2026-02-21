@@ -47,19 +47,15 @@ def parse_model_results(inputs, result, variables):
 
     def compute_gauge_temperatures(t_plant_df, q_flow_df, dt_hourly_values_df):
         t_results = pd.DataFrame(index=t_plant_df.index, columns=inputs['gauges'])
-
         for time_interval in t_plant_df.index:
             t_plant = t_plant_df.loc[time_interval].dropna().to_dict()
             t_gauge = {gauge: None for gauge in inputs['gauges']}
-
             for col in q_flow_df.columns:
                 from_node, to_node = col.split(' - ')
-                if from_node in t_plant:
-                    t_gauge[to_node] = t_plant[from_node] + dt_hourly_values_df.at['GCD - RM61', time_interval]
-
+                if from_node in t_plant and col in dt_hourly_values_df.index:
+                    t_gauge[to_node] = t_plant[from_node] + dt_hourly_values_df.at[col, time_interval]
             for gauge in inputs['gauges']:
                 t_results.at[time_interval, gauge] = t_gauge[gauge]
-
         return t_results
 
     t_gauge = compute_gauge_temperatures(results['T_plant'], results['q_flow'], inputs['dT_hourly_values'])
