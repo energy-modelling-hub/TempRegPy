@@ -28,7 +28,7 @@ def run(
         ProductLinearizationConfig,
         ProductLinearizationMethod,
     )
-    from tempregpy.model.results import parse_model_results
+    from tempregpy.model.results import ParseModelResults
     from ortools.math_opt.python import mathopt
 
     timestamp = datetime.datetime.now()
@@ -82,7 +82,7 @@ def run(
         raise typer.Exit(code=1)
 
     try:
-        results = parse_model_results(inputs, solve_result, model.variables)
+        results = ParseModelResults(inputs, solve_result, model.variables)
     except Exception as e:
         logger.error(f"Failed to parse results: {e}")
         raise typer.Exit(code=1)

@@ -4,12 +4,12 @@ from .product_linearization import (
     ProductLinearizationMethod,
     do_mathopt_product_linearization,
 )
-from .results import parse_model_results
+from .results import ParseModelResults
 
 __all__ = [
     'Model',
     'ModelConfig',
-    'parse_model_results',
+    'ParseModelResults',
     'ProductLinearizationConfig',
     'ProductLinearizationMethod',
 ]

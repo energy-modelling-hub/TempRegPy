@@ -5,9 +5,20 @@ from tempregpy.model import (
     ModelConfig,
     ProductLinearizationConfig,
     ProductLinearizationMethod,
-    parse_model_results,
+    ParseModelResults,
 )
 from tempregpy.model.functions import load_config
 from tempregpy._version import __version__, version
 
 __appname__ = "TempRegPy"
+
+__all__ = [
+    "Model",
+    "ModelConfig",
+    "ProductLinearizationConfig",
+    "ProductLinearizationMethod",
+    "ParseModelResults",
+    "load_config",
+    "__version__",
+    "__appname__",
+]
