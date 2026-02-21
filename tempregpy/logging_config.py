@@ -13,6 +13,9 @@ def setup_logging():
 
     Uses colorlog for colored terminal output if installed,
     otherwise falls back to standard library logging.
+
+    Only a console handler is created. For file logging,
+    call enable_file_logging() explicitly after import.
     """
     # Get or create the logger first — we need it to clean up old handlers
     if _HAS_COLORLOG:
@@ -20,15 +23,15 @@ def setup_logging():
     else:
         logger = logging.getLogger('tempregpy')
 
-    # ── Close and remove any existing handlers (safe for reload / re-entry) ──
-    for h in logger.handlers[:]:          # iterate over a copy of the list
+    # Close and remove any existing handlers (safe for reload / re-entry)
+    for h in logger.handlers[:]:  # iterate over a copy of the list
         try:
             h.close()
         except Exception:
             pass
         logger.removeHandler(h)
 
-    # ── Console handler ──────────────────────────────────────────────────────
+    # Console handler
     if _HAS_COLORLOG:
         handler = colorlog.StreamHandler()
         formatter = colorlog.ColoredFormatter(
@@ -52,20 +55,23 @@ def setup_logging():
     logger.addHandler(handler)
     logger.setLevel(logging.DEBUG)
 
-    # ── File handler ─────────────────────────────────────────────────────────
-    log_file = 'app.log'
-    if os.path.exists(log_file):
-        try:
-            os.remove(log_file)
-        except OSError:
-            pass                          # file locked by another process; reuse it
+    return logger
 
-    file_handler = logging.FileHandler(log_file)
-    file_formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+
+def enable_file_logging(path="app.log"):
+    """Enable file logging. Call this explicitly if you want log
+    output written to a file.
+
+    Args:
+        path: Path to the log file. Defaults to 'app.log'
+              in the current working directory.
+    """
+    file_handler = logging.FileHandler(path)
+    file_formatter = logging.Formatter(
+        '%(asctime)s - %(levelname)s - %(message)s'
+    )
     file_handler.setFormatter(file_formatter)
     logger.addHandler(file_handler)
-
-    return logger
 
 
 logger = setup_logging()
