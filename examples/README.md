@@ -8,8 +8,8 @@ with entirely fictional names and physically plausible (but fabricated) data.
 
 
 
-- **1 reservoir** (DamAlpha): 5,000–15,000 CFS turbine capacity, 0–5,000 CFS bypass
-- **1 downstream gauge** (GaugeDown): temperature limits 8–16°C hourly, 15°C daily average
+- **1 reservoir** (DamAlpha): 2,000–25,000 CFS turbine capacity, 700–15,000 CFS bypass
+- **1 downstream gauge** (GaugeDown): temperature limits 8–18.5°C hourly, 12°C daily average
 - **1 grid node** (GridNode1): 50–200 MW demand with diurnal pattern
 - **168-hour** (weekly) optimization horizon starting 2024-07-01
 - **MILP** formulation with HiGHS solver, 60-second time limit
@@ -39,18 +39,18 @@ The optimizer will:
 - Log results to the console
 
 ## Input Data Summary
-| Parameter | Value |
-| :--- | :--- |
-| Turbine flow | 5,000–15,000 CFS |
-| Bypass flow | 0–5,000 CFS |
-| Bypass temperature | 8.0°C |
-| Turbine temperature | 12.0°C |
-| Max hourly gauge temp | 16.0°C |
-| Max daily avg gauge temp | 15.0°C |
-| LMP range | 30–70 $/MWh |
-| Demand range | 50–200 MW |
-| Solver time limit | 60 seconds |
-| Optimality gap | 1% |
+| Parameter | Value            |
+| :--- |:-----------------|
+| Turbine flow | 2,000–25,000 CFS |
+| Bypass flow | 700–15,000 CFS   |
+| Bypass temperature | 8.0°C            |
+| Turbine temperature | 14.0°C           |
+| Max hourly gauge temp | 18.5°C           |
+| Max daily avg gauge temp | 12.0°C           |
+| LMP range | 30–70 $/MWh      |
+| Demand range | 50–200 MW        |
+| Solver time limit | 60 seconds       |
+| Optimality gap | 1%               |
 
 ## Notes
 - All names are fictional. No real facility data is used.
