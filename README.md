@@ -1,36 +1,67 @@
-# TempRegPy
-TempRegPy is a Python-based tool for optimizing hydropower dispatch. It maximizes dam profits while maintaining downstream water temperatures within ecological limits. Using real-time data, weather forecasts, and advanced algorithms, TempRegPy dynamically adjusts release, bypass, and spillage schedules to balance economic and environmental goals.
+## TempRegPy
+Temperature-constrained hydropower dispatch optimization using Mixed-Integer Linear Programming (MILP).
 
-# Installation Instructions
-1. Install Miniconda: Download and install [Miniconda](https://docs.anaconda.com/miniconda/) for your operating system.
-2. Download the Repository: Unzip the project repository downloaded from TempRegPy [GitHub](https://github.com/energy-modelling-hub/TempRegPy) page.
-3. Navigate to the Project Directory: Open a terminal and navigate to the directory where the repository was unzipped.
-```python:
-cd your_path
+## Overview
+TempRegPy optimizes hydropower release schedules to maximize energy revenue while maintaining downstream water temperatures within ecological limits. It uses selective withdrawal from thermally stratified reservoirs, market-based dispatch, and configurable operational constraints within a MILP framework solved via HiGHS (OR-Tools MathOpt).
+
+## Installation
+uv pip install:
+
+```Bash
+uv pip install tempregpy
 ```
-4. Create the Environment:
-```python:
-conda env create -f environment.yml
+Or with pip:
+
+
+```Bash
+pip install tempregpy
 ```
-5. Install the Package:
-```python:
-pip install -e .
+For development:
+
+
+```Bash
+git clone https://github.com/energy-modelling-hub/TempRegPy.git
+cd TempRegPy
+uv pip install -e ".[dev]"
 ```
 
-# Running the Code from CLI
-To run the code from the command line interface (CLI), use the following command:
+## Quick Start
+Generate a synthetic configuration file:
 
-```python:
-python -m tempregpy run -c path_to\TempRegPy.xlsm
+```Bash
+python examples/generate_config.py
 ```
+Run the optimizer:
 
-# Running the Code from Excel
-1. Enable Macros: Open the Excel file and enable macros.
-2. Run Simulation: Navigate to the "Inputs" sheet and click the "Run Simulation" button at the top.
+```Bash
+python -m tempregpy run -c examples/config.xlsx
+```
+See examples/README.md for details on the synthetic test case.
 
-# Importing Results into Excel
-1. Select Simulation Name: Choose the simulation name from the dropdown menu.
-2. Read Results: Click the "Read Results" button at the top of the Excel sheet to import the results.
+## Features
+- MILP-based temperature-constrained hydropower dispatch
+- Selective withdrawal from thermally stratified reservoirs
+- Multiple bilinear term linearization methods (McCormick, triangles, polygons, sum-of-convex)
+- Configurable ramping, cycling, and operating range constraints
+- Market-based dispatch with locational marginal prices
+- HiGHS solver via OR-Tools MathOpt (open-source)
+- Excel-based configuration input
+- CLI interface
+
+## Citation
+If you use TempRegPy in your research, please cite:
+
+```Code snippet
+@article{pavicevic2025tempregpy,
+  title={TempRegPy: An Open-Source MILP Framework for Temperature-Constrained Hydropower Dispatch with Application to Glen Canyon Dam},
+  author={Pavicevic, Matija and Usis, Maris Andris and Yu, Ao and Henriquez, Walter Antonio and Wilhite, Jerry and Ploussard, Quentin},
+  journal={Environmental Modelling \& Software},
+  year={2025},
+  doi={DOI_PLACEHOLDER}
+}
+```
+## License
+MIT License. See LICENSE for details.
 
 # Developers guide (Compile .exe file)
 ```commandline
