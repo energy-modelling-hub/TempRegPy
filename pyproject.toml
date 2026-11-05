@@ -7,7 +7,7 @@ name = "tempregpy"
 dynamic = ["version"]
 description = "Temperature regulation optimization for hydropower operations"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 license = {text = "MIT"}
 authors = [
     {name = "M. Pavicevic", email = "mpavicevic@anl.gov"},

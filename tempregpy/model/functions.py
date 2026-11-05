@@ -218,7 +218,7 @@ def initialize_inputs(keys, config, par_name, column, inputs, default_value):
 def initialize_inputs_with_index(keys, config, par_name, columns, inputs, index_key, default_value):
     for key in keys:
         if key in config[par_name].values:
-            inputs[key] = config.loc[config[par_name] == key, columns].set_index('Name').reindex(inputs[index_key]).infer_objects(copy=False).fillna(default_value)
+            inputs[key] = config.loc[config[par_name] == key, columns].set_index('Name').reindex(inputs[index_key]).infer_objects().fillna(default_value)
         else:
             logger.warning(f'Key "{key}" not found in config. Skipping.')
 
@@ -226,7 +226,7 @@ def initialize_inputs_with_index(keys, config, par_name, columns, inputs, index_
 def initialize_inputs_with_conversion(keys_with_conversion, config, par_name, columns, inputs, index_key, default_value=0):
     for key, factor in keys_with_conversion.items():
         if key in config[par_name].values:
-            inputs[key] = config.loc[config[par_name] == key, columns].set_index('Name').reindex(inputs[index_key]).infer_objects(copy=False).fillna(default_value) * factor
+            inputs[key] = config.loc[config[par_name] == key, columns].set_index('Name').reindex(inputs[index_key]).infer_objects().fillna(default_value) * factor
         else:
             logger.warning(f'Key "{key}" not found in config. Creating empty DataFrame with default value {default_value}')
             # Create a DataFrame with the appropriate index and columns filled with default_value
