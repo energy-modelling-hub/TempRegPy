@@ -57,3 +57,16 @@ The optimizer will:
 - The data is physically plausible but entirely fabricated for demonstration.
 - This example exercises the full optimization pipeline including temperature constraints, ramping limits, and bypass scheduling.
 
+
+## River Travel Time (Lag)
+Travel time is set **per river link** (rows named like the `river_topology` entries, e.g. `DamAlpha - GaugeDown`):
+
+| Python variable | Name column | Single input | Meaning |
+| :--- | :--- | :--- | :--- |
+| `lag_hours` | link (`A - B`) | whole hours | Time for water released at A to reach B. Links not listed = 0. |
+| `lag_boundary` | – | `Wrap` (default) or `Initial` | What happens for hours where `t - lag` falls before the horizon start. |
+| `lag_initial_flow` | link (`A - B`) | CFS (optional) | Flow already in transit at the start (only for `Initial`). Blank = hold the link's first-hour release. |
+
+- `Wrap`: the week is circular, so hour H01 receives water released at the end of the week.
+- `Initial`: pre-horizon water is an initial condition. Temperature limits for it use the first hour; releases that would arrive after the horizon end use the last hour's limits.
+- Flow released at hour `t` arrives at `t + lag`. Hourly limits and `dT` are evaluated at the arrival hour. Daily limits use the day holding the midpoint of the arrival window.
