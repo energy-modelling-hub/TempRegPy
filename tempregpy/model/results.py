@@ -1,6 +1,7 @@
 import pandas as pd
 from tempregpy.model.constants import CFS_TO_AFH
 from ..logging_config import logger
+from .functions import link_lag_hours, lagged_hour, normalize_lag_boundary
 
 
 class ParseModelResults:
@@ -84,12 +85,19 @@ class ParseModelResults:
         results['T_plant'] = (results['q_bp'] * inputs['T_bp_values'].T + results['q_tur'] * inputs['T_tur_values'].T) / (results['q_bp'] + results['q_tur'])
 
         def compute_gauge_temperatures(t_plant_df, q_flow_df, dt_hourly_values_df):
+            # Water arriving at a gauge at hour t left the upstream plant at t - lag(link) (see lagged_hour);
+            # dT is the value at the arrival hour, matching the model's temperature constraints.
+            lags = link_lag_hours(inputs)
+            boundary = normalize_lag_boundary(inputs.get('lag_boundary'))
+            horizon_len = len(t_plant_df.index)
+            plant_rows = [t_plant_df.iloc[k].dropna().to_dict() for k in range(horizon_len)]
             t_results = pd.DataFrame(index=t_plant_df.index, columns=inputs['gauges'])
-            for time_interval in t_plant_df.index:
-                t_plant = t_plant_df.loc[time_interval].dropna().to_dict()
+            for pos, time_interval in enumerate(t_plant_df.index):
                 t_gauge = {gauge: None for gauge in inputs['gauges']}
                 for col in q_flow_df.columns:
                     from_node, to_node = col.split(' - ')
+                    src_idx, _ = lagged_hour(pos, lags.get((from_node, to_node), 0), horizon_len, boundary)
+                    t_plant = plant_rows[src_idx]
                     if from_node in t_plant and col in dt_hourly_values_df.index:
                         t_gauge[to_node] = t_plant[from_node] + dt_hourly_values_df.at[col, time_interval]
                 for gauge in inputs['gauges']:

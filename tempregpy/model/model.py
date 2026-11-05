@@ -128,25 +128,19 @@ class Model():
         parameters['Q_rough_zone_max'] = {(p, r): value for p, row in inputs['Q_rough_zone_max'].T.iterrows() for r, value
                                           in row.items()}
 
-        # ---- Travel time lag (hours) ----
-        # lag_hours is a single integer: the delay from GCD to the target RM.
-        if 'lag_hours' in inputs and inputs['lag_hours'] is not None:
-            parameters['lag_hours'] = int(inputs['lag_hours'])
-        else:
-            parameters['lag_hours'] = 0
+        # ---- Travel time lag (hours), per river link ----
+        # parameters['lag_hours'][(i, j)] = hours for water released at i to reach j (0 if unspecified).
+        parameters['lag_hours'] = link_lag_hours(inputs)
+        parameters['lag_boundary'] = normalize_lag_boundary(inputs.get('lag_boundary'))
+        initial_flow_df = inputs.get('lag_initial_flow')
+        parameters['lag_initial_flow'] = {}
+        if initial_flow_df is not None:
+            for link, value in initial_flow_df.iloc[:, 0].items():
+                parameters['lag_initial_flow'][tuple(str(link).split(' - '))] = value
+        horizon_len = len(inputs['time_horizon'])  # currently 168 hours (H01-H168)
 
-        logger.info(f"Travel time lag: {parameters['lag_hours']} hours")
-
-        def get_lagged_t(t_idx, lag):
-            """
-            Given current hour index t_idx and a lag in hours,
-            return the lagged hour index.
-            Wraps around the 168-hour weekly horizon (circular).
-            """
-            lagged = t_idx - lag
-            # return max(0, lagged)
-            horizon_len = len(inputs['time_horizon']) # currently 168 hours (H0-H167)
-            return (t_idx - lag) % horizon_len
+        logger.info(f"Travel time lag: {sum(1 for v in parameters['lag_hours'].values() if v)} link(s) with lag > 0, "
+                    f"boundary = {parameters['lag_boundary']}")
 
         def log_sample_summary(logger, name, parameter_dict, sample_size=5):
             logger.debug(f"{name} assigned (sample): {list(parameter_dict.values())[:sample_size]} ... (total: {len(parameter_dict)})")
@@ -522,6 +516,32 @@ class Model():
         ###################################
         ######## FLOWS BETWEEN NODES
         ###################################
+        # ---- Travel-time helpers ----
+        # q_flow[i][j][t] is the flow RELEASED from i towards j at hour t. With lag L_ij it ARRIVES at j at
+        # hour t + L_ij. Boundary handling ('Wrap' or 'Initial') is set by parameters['lag_boundary'].
+        nodes = inputs['river_nodes']
+        lag_boundary = parameters['lag_boundary']
+
+        def link_lag(i, j):
+            return parameters['lag_hours'][(nodes[i], nodes[j])]
+
+        def arrival_idx(t, i, j):
+            """Hour index at which water released from i at hour t reaches j."""
+            return advanced_hour(t, link_lag(i, j), horizon_len, lag_boundary)
+
+        def arriving_flow(i, j, t):
+            """
+            Flow on link i -> j that reaches j at hour t, as (expression, release_hour_idx).
+            Pre-horizon releases ('Initial' boundary) use the link's initial flow if given,
+            otherwise hold the link's first-hour flow variable.
+            """
+            idx, pre_horizon = lagged_hour(t, link_lag(i, j), horizon_len, lag_boundary)
+            if pre_horizon:
+                f0 = parameters['lag_initial_flow'].get((nodes[i], nodes[j]), np.nan)
+                if not np.isnan(f0):
+                    return float(f0), idx
+            return variables['q_flow'][i][j][idx], idx
+
         # Add constraint for outflows from a node p
         for i in range(len(inputs['river_nodes'])):
             for t in range(len(inputs['time_horizon'])):
@@ -536,7 +556,7 @@ class Model():
                 constraint_id_main.append('Incoming flows')
                 constraint_id_unit.append(f'{inputs['river_nodes'][i]}')
                 constraint_id_time.append(f'{inputs['time_horizon'][t]}')
-                constraints.append(model.add_linear_constraint(variables['q_in_flow'][i][t] == sum(variables['q_flow'][j][i][t] for j in range(len(inputs['river_nodes'])))))
+                constraints.append(model.add_linear_constraint(variables['q_in_flow'][i][t] == sum(arriving_flow(j, i, t)[0] for j in range(len(inputs['river_nodes'])))))
 
         # Add constraints for hourly flows between nodes
         for p in range(len(inputs['river_nodes'])):
@@ -835,18 +855,15 @@ class Model():
                 #         in range(len(inputs['river_nodes']))),
                 #     name=f'Maximum hourly temperature (OutFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
                 # ))
-                lag = parameters['lag_hours']
-                lag_t = get_lagged_t(t, lag)
-                lag_time = inputs['time_horizon'][lag_t]
-
+                # Release at t from p reaches gauge j at hour t + lag(p, j); the limit and dT apply at arrival.
                 constraints.append(model.add_linear_constraint(
                     variables['q_tur'][p][t] * parameters['T_tur'][plant, time] +
                     variables['q_bp'][p][t] * parameters['T_bp'][plant, time] +
                     variables['QT_latent'][p][t] <=
                     variables['q_sink'][p][t] * parameters['T_sink_hourly_max'][inputs['river_nodes'][p], time] +
-                    sum((parameters['T_gg_hourly_max'][inputs['river_nodes'][j], lag_time] 
-                        - parameters['dT_hourly'][inputs['river_nodes'][p], inputs['river_nodes'][j], lag_time]) 
-                        * variables['q_flow'][p][j][t] 
+                    sum((parameters['T_gg_hourly_max'][inputs['river_nodes'][j], inputs['time_horizon'][arrival_idx(t, p, j)]]
+                        - parameters['dT_hourly'][inputs['river_nodes'][p], inputs['river_nodes'][j], inputs['time_horizon'][arrival_idx(t, p, j)]])
+                        * variables['q_flow'][p][j][t]
                         for j in range(len(inputs['river_nodes']))),
                     name=f'Maximum hourly temperature (OutFlow) for {inputs["river_nodes"][p]} at {inputs["time_horizon"][t]}'
                 ))
@@ -876,18 +893,15 @@ class Model():
                 #         in range(len(inputs['river_nodes']))),
                 #     name=f'Minimum hourly temperature (OutFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
                 # ))
-                lag = parameters['lag_hours']
-                lag_t = get_lagged_t(t, lag)
-                lag_time = inputs['time_horizon'][lag_t]
-
+                # Release at t from p reaches gauge j at hour t + lag(p, j); the limit and dT apply at arrival.
                 constraints.append(model.add_linear_constraint(
                     variables['q_tur'][p][t] * parameters['T_tur'][plant, time] +
                     variables['q_bp'][p][t] * parameters['T_bp'][plant, time] +
                     variables['QT_latent'][p][t] >=
                     variables['q_sink'][p][t] * parameters['T_sink_hourly_min'][inputs['river_nodes'][p], time] +
-                    sum((parameters['T_gg_hourly_min'][inputs['river_nodes'][j], lag_time] 
-                        - parameters['dT_hourly'][inputs['river_nodes'][p], inputs['river_nodes'][j], lag_time]) 
-                        * variables['q_flow'][p][j][t] 
+                    sum((parameters['T_gg_hourly_min'][inputs['river_nodes'][j], inputs['time_horizon'][arrival_idx(t, p, j)]]
+                        - parameters['dT_hourly'][inputs['river_nodes'][p], inputs['river_nodes'][j], inputs['time_horizon'][arrival_idx(t, p, j)]])
+                        * variables['q_flow'][p][j][t]
                         for j in range(len(inputs['river_nodes']))),
                     name=f'Minimum hourly temperature (OutFlow) for {inputs["river_nodes"][p]} at {inputs["time_horizon"][t]}'
                 ))
@@ -912,16 +926,15 @@ class Model():
                 #                                                 name = f'Maximum hourly temperature (InFlow) for {inputs['river_nodes'][p]} at {inputs['time_horizon'][t]}'
                 #                                                 ))
                 if plant in inputs['gauges']:
-                    lag = parameters['lag_hours']
-                    lag_t = get_lagged_t(t, lag)
-                    lag_time = inputs['time_horizon'][lag_t]
-                    
+                    # Flow arriving at gauge p at hour t was released upstream at t - lag(j, p).
+                    arriving = [arriving_flow(j, p, t) for j in range(len(inputs['river_nodes']))]
+
                     constraints.append(model.add_linear_constraint(
                         variables['QT_latent'][p][t] <= 
-                        variables['q_source'][p][t]*parameters['T_source_hourly_max'][inputs['river_nodes'][p], lag_time] + 
-                        sum((parameters['T_gg_hourly_max'][inputs['river_nodes'][j], lag_time]
-                            +parameters['dT_hourly'][inputs['river_nodes'][j],inputs['river_nodes'][p], lag_time])
-                            *variables['q_flow'][j][p][t] 
+                        variables['q_source'][p][t]*parameters['T_source_hourly_max'][inputs['river_nodes'][p], time] +
+                        sum((parameters['T_gg_hourly_max'][inputs['river_nodes'][j], inputs['time_horizon'][arriving[j][1]]]
+                            +parameters['dT_hourly'][inputs['river_nodes'][j], inputs['river_nodes'][p], time])
+                            * arriving[j][0]
                             for j in range(len(inputs['river_nodes']))),
                         name = f'Maximum hourly temperature (InFlow) for {inputs["river_nodes"][p]} at {inputs["time_horizon"][t]}'
                     ))
@@ -940,20 +953,23 @@ class Model():
                 #                                                 ))
 
                 if plant in inputs['gauges']:
-                    lag = parameters['lag_hours']
-                    lag_t = get_lagged_t(t, lag)
-                    lag_time = inputs['time_horizon'][lag_t]
-                    
+                    # Flow arriving at gauge p at hour t was released upstream at t - lag(j, p).
+                    arriving = [arriving_flow(j, p, t) for j in range(len(inputs['river_nodes']))]
+
                     constraints.append(model.add_linear_constraint(
                         variables['QT_latent'][p][t] >= 
-                        variables['q_source'][p][t]*parameters['T_source_hourly_min'][inputs['river_nodes'][p], lag_time] + 
-                        sum((parameters['T_gg_hourly_min'][inputs['river_nodes'][j], lag_time]
-                            +parameters['dT_hourly'][inputs['river_nodes'][j],inputs['river_nodes'][p], lag_time])
-                            *variables['q_flow'][j][p][t] 
+                        variables['q_source'][p][t]*parameters['T_source_hourly_min'][inputs['river_nodes'][p], time] +
+                        sum((parameters['T_gg_hourly_min'][inputs['river_nodes'][j], inputs['time_horizon'][arriving[j][1]]]
+                            +parameters['dT_hourly'][inputs['river_nodes'][j], inputs['river_nodes'][p], time])
+                            * arriving[j][0]
                             for j in range(len(inputs['river_nodes']))),
                         name=f'Minimum hourly temperature (InFlow) for {inputs["river_nodes"][p]} at {inputs["time_horizon"][t]}'
                     ))
 
+
+        def arrival_day(d, i, j):
+            """Day whose limit applies to releases of day d from i reaching j (day holding the window's midpoint)."""
+            return arrival_idx(d * hours_per_day + hours_per_day // 2, i, j) // hours_per_day
 
         # Add constraint for maximum daily temperature limit on the outflow side
         for p in range(len(inputs['river_nodes'])):
@@ -977,8 +993,8 @@ class Model():
                     parameters['T_gg_daily'][inputs['river_nodes'][p], f'D{d + 1:02}'] *
                     sum(variables['q_sink'][p][t] for t in range(start_hour, end_hour)) +
                     sum(
-                        (parameters['T_gg_daily'][inputs['river_nodes'][j], f'D{d + 1:02}'] -
-                         parameters['dT_daily'][inputs['river_nodes'][p], inputs['river_nodes'][j]][d]) *
+                        (parameters['T_gg_daily'][inputs['river_nodes'][j], f'D{arrival_day(d, p, j) + 1:02}'] -
+                         parameters['dT_daily'][inputs['river_nodes'][p], inputs['river_nodes'][j]][arrival_day(d, p, j)]) *
                         sum(variables['q_flow'][p][j][t] for t in range(start_hour, end_hour))
                         for j in range(len(inputs['river_nodes']))
                     ),

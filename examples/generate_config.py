@@ -54,7 +54,7 @@ def demand_pattern(hour_of_day):
 # ---------------------------------------------------------------------------
 # Main generator
 # ---------------------------------------------------------------------------
-def main():
+def main(out=None):
     HOURS = 168
     DAYS = 7
     H_PER_D = 24
@@ -163,6 +163,9 @@ def main():
     add("Operating range", "cnstr_oper_range", single=True)
     add("Rough zone", "cnstr_rough_zone", single=False)
     add("Pattern repeat", "cnstr_pattern_repeat", single="Off")
+
+    # River travel time. 'Wrap' = circular week, 'Initial' = pre-horizon water is an initial condition.
+    add("Travel time boundary", "lag_boundary", single="Wrap")
 
     # ==================================================================
     # NETWORK TOPOLOGY
@@ -280,6 +283,11 @@ def main():
     # Temperature delta: river warms by DT_HOURLY from plant to gauge
     add("Hourly temp delta (C)", "dT_hourly_values", name=TOPO, hourly=ch(DT_HOURLY))
 
+    # --- TRAVEL TIME per river link (whole hours; links not listed = 0) ---
+    add("Travel time (h)", "lag_hours", name=TOPO, single=0)
+    # Optional, used when lag_boundary = 'Initial' (CFS); blank = hold the link's first-hour flow
+    add("Initial flow in transit (CFS)", "lag_initial_flow", name=TOPO)
+
     # --- POWER: only plant generates power ---
     add("Power min (MW)", "P_tur_min_values", name=PLANT, hourly=ch(P_MIN))
     add("Power min - gauge", "P_tur_min_values", name=GAUGE, hourly=ch(0))
@@ -330,7 +338,8 @@ def main():
     for row in rows:
         ws.append(row)
 
-    out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.xlsx")
+    if out is None:
+        out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.xlsx")
     wb.save(out)
     print(f"Generated {out}")
 

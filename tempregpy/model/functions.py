@@ -240,6 +240,125 @@ def initialize_inputs_with_conversion(keys_with_conversion, config, par_name, co
 
 
 
+LAG_BOUNDARY_WRAP = 'Wrap'
+LAG_BOUNDARY_INITIAL = 'Initial'
+
+
+def normalize_lag_boundary(value):
+    """Return 'Wrap' or 'Initial' (case-insensitive); blank/None -> 'Wrap'."""
+    if value is None or (isinstance(value, float) and np.isnan(value)) or str(value).strip() == '':
+        return LAG_BOUNDARY_WRAP
+    text = str(value).strip().lower()
+    if text in ('wrap', 'wrap around', 'wraparound', 'circular', 'cyclic'):
+        return LAG_BOUNDARY_WRAP
+    if text in ('initial', 'initial condition', 'initial_condition'):
+        return LAG_BOUNDARY_INITIAL
+    raise ValueError(f"Invalid lag_boundary '{value}'. Use '{LAG_BOUNDARY_WRAP}' or '{LAG_BOUNDARY_INITIAL}'.")
+
+
+def lagged_hour(t, lag, horizon_len, boundary):
+    """
+    Hour index at which the water arriving at hour ``t`` was released (``t - lag``).
+
+    Returns ``(index, pre_horizon)``.
+      * Inside the horizon: ``(t - lag, False)``.
+      * Before the horizon start and boundary == 'Wrap': index wraps circularly, ``pre_horizon`` False.
+      * Before the horizon start and boundary == 'Initial': ``(0, True)`` -- the water was released
+        before the horizon, so it is an initial condition. Index 0 is only used as the hold-first-hour
+        reference for temperatures (and for flow when no explicit initial flow is given).
+    """
+    idx = t - lag
+    if idx >= 0:
+        return idx, False
+    if boundary == LAG_BOUNDARY_WRAP:
+        return idx % horizon_len, False
+    return 0, True
+
+
+def advanced_hour(t, lag, horizon_len, boundary):
+    """
+    Hour index at which water released at hour ``t`` arrives downstream (``t + lag``).
+
+    Past the horizon end: wraps circularly ('Wrap') or holds the last hour ('Initial').
+    """
+    idx = t + lag
+    if idx < horizon_len:
+        return idx
+    if boundary == LAG_BOUNDARY_WRAP:
+        return idx % horizon_len
+    return horizon_len - 1
+
+
+def link_lag_hours(inputs):
+    """
+    Per-link travel times as ``{(from_node, to_node): int hours}`` for every ordered node pair.
+    Links without a value have lag 0. A bare number in ``inputs['lag_hours']`` applies to every link.
+    """
+    nodes = list(inputs['river_nodes'])
+    lag_input = inputs.get('lag_hours')
+    lags = {(i, j): 0 for i in nodes for j in nodes}
+    if lag_input is None:
+        return lags
+    if np.isscalar(lag_input):
+        value = 0 if pd.isna(lag_input) else int(lag_input)
+        return {k: value for k in lags}
+    column = lag_input.columns[0]
+    for link, value in lag_input[column].items():
+        if pd.isna(value):
+            continue
+        i, j = str(link).split(' - ')
+        if (i, j) in lags:
+            lags[(i, j)] = int(value)
+    return lags
+
+
+def _optional_single_input(config, par_name, input_type, key):
+    rows = config.loc[config[par_name] == key, input_type]
+    return rows.values[0] if len(rows) else None
+
+
+def load_lag_inputs(config, par_name, input_type, inputs):
+    """
+    Read the optional river travel-time inputs into ``inputs``:
+      * ``lag_hours``        -- per link ("A - B" in Name, hours in Single input); missing links = 0
+      * ``lag_boundary``     -- 'Wrap' (default) or 'Initial'
+      * ``lag_initial_flow`` -- per link (CFS, converted to AF/h), used when lag_boundary = 'Initial'.
+                                Blank/missing = hold the link's first-hour flow.
+    """
+    topology = inputs['river_topology']
+    present = config[par_name].values
+
+    if 'lag_hours' in present:
+        lag_df = (config.loc[config[par_name] == 'lag_hours', ['Name', input_type]]
+                  .set_index('Name').reindex(topology))
+        lag_df[input_type] = pd.to_numeric(lag_df[input_type], errors='coerce').fillna(0)
+        if (lag_df[input_type] < 0).any():
+            raise ValueError(f"lag_hours must be >= 0 (negative for: {list(lag_df.index[lag_df[input_type] < 0])})")
+        if ((lag_df[input_type] % 1) != 0).any():
+            logger.warning('lag_hours contains non-integer values; rounding to whole hours.')
+        lag_df[input_type] = lag_df[input_type].round().astype(int)
+    else:
+        lag_df = pd.DataFrame(0, index=topology, columns=[input_type])
+    inputs['lag_hours'] = lag_df
+
+    inputs['lag_boundary'] = normalize_lag_boundary(_optional_single_input(config, par_name, input_type, 'lag_boundary'))
+
+    if 'lag_initial_flow' in present:
+        flow_df = (config.loc[config[par_name] == 'lag_initial_flow', ['Name', input_type]]
+                   .set_index('Name').reindex(topology))
+        flow_df[input_type] = pd.to_numeric(flow_df[input_type], errors='coerce') * CFS_TO_AFH
+    else:
+        flow_df = pd.DataFrame(np.nan, index=topology, columns=[input_type])
+    inputs['lag_initial_flow'] = flow_df
+
+    horizon_len = len(inputs['time_horizon'])
+    max_lag = int(lag_df[input_type].max()) if len(lag_df) else 0
+    if max_lag > 0:
+        logger.info(f"Travel times (hours): {lag_df[input_type].to_dict()} | boundary: {inputs['lag_boundary']}")
+        if max_lag >= horizon_len:
+            logger.warning(f'Maximum lag ({max_lag} h) is >= horizon length ({horizon_len} h).')
+
+
 def load_config(file_path):
     full_path = os.path.abspath(file_path)
 
@@ -436,6 +555,11 @@ def load_config(file_path):
             ]
             initialize_inputs_with_index(plant_to_gauge__hourly_keys, config, par_name, ['Name']+inputs['time_horizon'], inputs,
                                          'river_topology', 0)
+
+            ####################################
+            # Process river travel time (lag) data
+            ####################################
+            load_lag_inputs(config, par_name, input_type, inputs)
 
             ##########################################
             # Process plant to node related input data
